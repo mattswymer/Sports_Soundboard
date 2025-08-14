@@ -791,7 +791,7 @@ async function generateTTS(text, voice, action) {
           };
           // NOTE: When running this file locally, the API key is not automatically provided.
           // You will need to get your own API key and replace the empty string below.
-          const apiKey = "AIzaSyAFHL4g545yLj7-VkEiaBbWuzauxmd3K90";
+          const apiKey = "YOUR_API_KEY_HERE";
           const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
 
           const response = await fetch(apiUrl, {
