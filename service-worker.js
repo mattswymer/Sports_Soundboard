@@ -1,19 +1,19 @@
-const CACHE_NAME = 'sb-cache-v1';
+const CACHE_NAME = 'soundboard-cache-v1';
+const ASSETS = [
+  './',           // root
+  './index.html', // your main page
+  './service-worker.js',
+  // add any local CSS, JS, or image files you serve yourself
+];
 
-self.addEventListener('install', () => self.skipWaiting());
-self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+self.addEventListener('install', event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+  );
+});
 
-self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  if (req.destination === 'audio' || req.url.match(/\.(mp3|wav|ogg)$/i)) {
-    event.respondWith(
-      caches.open(CACHE_NAME).then(async (cache) => {
-        const match = await cache.match(req);
-        if (match) return match;
-        const resp = await fetch(req);
-        cache.put(req, resp.clone());
-        return resp;
-      })
-    );
-  }
+self.addEventListener('fetch', event => {
+  event.respondWith(
+    caches.match(event.request).then(response => response || fetch(event.request))
+  );
 });
