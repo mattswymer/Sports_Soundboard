@@ -302,17 +302,18 @@ function loadSettingsLS() {
   return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
 }
 
-/* Override file‑adding logic so we also save to IndexedDB */
-const origAddFilesToColumn = addFilesToColumn;
-addFilesToColumn = function(files, columnEl) {
+/* Override file-adding logic so we also save to IndexedDB */
+// const origAddFilesToColumn = addFilesToColumn; // No need to override, just use the function
+function addFilesToColumn(files, columnEl) {
   files.forEach(file => {
+    // Prevent adding duplicates
     if ([...columnEl.querySelectorAll('.sound-card')].some(c => c.idbKey === file.name)) return;
 
     const reader = new FileReader();
     reader.onload = async (e) => {
       const arrayBuffer = e.target.result;
-      const col = columnEl.id === 'annCol' ? 'ann' : 'music'; // NEW
-      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col }); // NEW
+      const col = columnEl.id === 'annCol' ? 'ann' : 'music';
+      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col });
       const blob = new Blob([arrayBuffer], { type: file.type });
       const card = createCard({
         name: file.name.replace(/\.[^/.]+$/, ''),
@@ -324,21 +325,20 @@ addFilesToColumn = function(files, columnEl) {
     };
     reader.readAsArrayBuffer(file);
   });
-};
+}
+
 
 /* Restore saved audio on load */
 async function restoreFromDB() {
   const keys = await idbGetAllKeys();
   for (const key of keys) {
     const rec = await idbGet(key);
-    if (!rec) continue;
+    if (!rec || !rec.col) continue; // Ensure there is a record and a defined column
     const blob = new Blob([rec.buffer], { type: rec.type });
 
-    const targetCol =
-      rec.col === 'ann' ? $('#annCol') :
-      rec.col === 'music' ? $('#musicCol') :
-      (/ann/i.test(rec.name) ? $('#annCol') : $('#musicCol'));
+    const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
 
+    // Prevent duplicates
     if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === rec.name)) continue;
 
     const card = createCard({
@@ -350,6 +350,7 @@ async function restoreFromDB() {
   }
   updateCounts();
 }
+
 /* Save slider values automatically */
 function hookSettings() {
   const fadeInSlider = document.getElementById('fadeInSlider');
@@ -786,7 +787,7 @@ columns.forEach(({ wrap, input }) => {
     }
   });
 
-  wrap.addEventListener('drop', (e) => {
+  wrap.addEventListener('drop', async (e) => {
     e.preventDefault();
     wrap.classList.remove('ring-2', 'ring-sky-500', 'drag-over');
 
@@ -798,9 +799,20 @@ columns.forEach(({ wrap, input }) => {
       if (dragging && dragging.parentElement !== wrap) {
         wrap.appendChild(dragging);
         updateCounts();
+
+        // Update the sound's column in IndexedDB
+        if (dragging.idbKey) {
+            const newCol = wrap.id === 'annCol' ? 'ann' : 'music';
+            const rec = await idbGet(dragging.idbKey);
+            if (rec) {
+                rec.col = newCol;
+                await idbSet(dragging.idbKey, rec);
+            }
+        }
       }
     }
   });
+
 
   // Reordering within column
   wrap.addEventListener('dragover', (e) => {
