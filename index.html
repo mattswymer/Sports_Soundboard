@@ -243,8 +243,129 @@
       </div>
     </div>
   </div>
-
 <script>
+/* ==================== NEW STORAGE + RESTORE LAYER ==================== */
+/* IndexedDB setup */
+const DB_NAME = 'soundboardDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'sounds';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore(STORE_NAME);
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e);
+  });
+}
+function idbSet(key, value) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  }));
+}
+function idbGet(key) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e);
+  }));
+}
+function idbGetAllKeys() {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).getAllKeys();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e);
+  }));
+}
+
+/* LocalStorage for slider/toggle/fade settings */
+const SETTINGS_KEY = 'sb_settings_v1';
+function saveSettingsLS(data) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+}
+function loadSettingsLS() {
+  return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+}
+
+/* Override file‑adding logic so we also save to IndexedDB */
+const origAddFilesToColumn = addFilesToColumn;
+addFilesToColumn = function(files, columnEl) {
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const arrayBuffer = e.target.result;
+      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type });
+      const blob = new Blob([arrayBuffer], { type: file.type });
+      const card = createCard({ name: file.name.replace(/\.[^/.]+$/, ''), blob });
+      columnEl.appendChild(card);
+      updateCounts();
+    };
+    reader.readAsArrayBuffer(file);
+  });
+};
+
+/* Restore saved audio on load */
+async function restoreFromDB() {
+  const keys = await idbGetAllKeys();
+  for (const key of keys) {
+    const rec = await idbGet(key);
+    if (!rec) continue;
+    const blob = new Blob([rec.buffer], { type: rec.type });
+    const card = createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob });
+    if (/ann/i.test(rec.name)) {
+      document.getElementById('annCol').appendChild(card);
+    } else {
+      document.getElementById('musicCol').appendChild(card);
+    }
+  }
+  updateCounts();
+}
+
+/* Save slider values automatically */
+function hookSettings() {
+  const fadeInSlider = document.getElementById('fadeInSlider');
+  const fadeOutSlider = document.getElementById('fadeOutSlider');
+  const saveFn = () => saveSettingsLS({
+    fadeIn: fadeInSlider.value,
+    fadeOut: fadeOutSlider.value
+  });
+  fadeInSlider.addEventListener('input', saveFn);
+  fadeOutSlider.addEventListener('input', saveFn);
+}
+function applySavedSettings() {
+  const s = loadSettingsLS();
+  if (s.fadeIn) {
+    document.getElementById('fadeInSlider').value = s.fadeIn;
+    fadeInTime = parseFloat(s.fadeIn);
+    document.getElementById('fadeInVal').textContent = fadeInTime.toFixed(1);
+  }
+  if (s.fadeOut) {
+    document.getElementById('fadeOutSlider').value = s.fadeOut;
+    fadeOutTime = parseFloat(s.fadeOut);
+    document.getElementById('fadeOutVal').textContent = fadeOutTime.toFixed(1);
+  }
+}
+
+/* Register Service Worker for offline caching */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js');
+}
+
+/* Init on load */
+window.addEventListener('DOMContentLoaded', async () => {
+  applySavedSettings();
+  hookSettings();
+  await restoreFromDB();
+});
+/* ==================== END STORAGE + RESTORE LAYER ==================== */
+
 // ===== Utilities =====
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
