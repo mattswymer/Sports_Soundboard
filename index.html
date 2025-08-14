@@ -588,9 +588,19 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
     audio.__fadeRaf = requestAnimationFrame(step);
   }
 
-  editBtn.addEventListener('click', () => {
-    const newName = prompt('Rename sound', title.textContent.trim());
-    if (newName && newName.trim()) title.textContent = newName.trim();
+  editBtn.addEventListener('click', async () => {
+    const currentName = title.textContent.trim();
+    const newName = prompt('Rename sound', currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+      title.textContent = newName.trim();
+      if (card.idbKey) {
+        const rec = await idbGet(card.idbKey);
+        if (rec) {
+          rec.name = newName.trim();
+          await idbSet(card.idbKey, rec);
+        }
+      }
+    }
   });
 
   card.addEventListener('dragstart', (e) => {
@@ -632,14 +642,14 @@ async function restoreFromDB() {
 
     if (rec.type === 'tts') {
       const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
-      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.dataset.text === rec.name && c.dataset.voice === rec.voiceName)) continue;
-      const card = createCard({ name: rec.name, text: rec.text, voiceName: rec.voiceName, idbKey: rec.idbKey || rec.name });
+      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === key)) continue;
+      const card = createCard({ name: rec.name, text: rec.text, voiceName: rec.voiceName, idbKey: key });
       targetCol.appendChild(card);
     } else {
       const blob = new Blob([rec.buffer], { type: rec.type });
       const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
-      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === rec.name)) continue;
-      const card = createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob, idbKey: rec.name });
+      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === key)) continue;
+      const card = createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob, idbKey: key });
       targetCol.appendChild(card);
     }
   }
@@ -656,7 +666,11 @@ function generateBrowserTTS(text, voiceName, action) {
     showMessage("Please enter some text to generate audio.");
     return;
   }
-  
+  if (!voiceName) {
+    showMessage("Please select a voice before performing this action.");
+    return;
+  }
+
   if (action === 'preview') {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
