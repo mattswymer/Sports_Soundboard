@@ -245,10 +245,7 @@
   </div>
 <script>
 // --- Configuration and API Key ---
-const API_KEY = "AIzaSyAFHL4g545yLj7-VkEiaBbWuzauxmd3K90"; // ⚠️ IMPORTANT: Not recommended for public deployment.
-// Using this key in this file is a security risk as it can be stolen by anyone viewing the page source.
-// This is done here for demonstration purposes based on your request.
-// For a production app, use a server-side proxy to protect your API key.
+const API_KEY = "YOUR_API_KEY"; // ⚠️ IMPORTANT: Replace with your key.
 
 // ===== Utility Functions =====
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -605,7 +602,8 @@ async function generateTTS(text, voice, action) {
     if (!text) showMessage("Please enter some text to generate audio.");
     return;
   }
-  if (action === 'add' && $(`#annCol .sound-card[data-key="${text}.wav"]`)) {
+  const fileName = `${text}.wav`;
+  if (action === 'add' && $(`#annCol .sound-card[data-key="${fileName}"]`)) {
     showMessage('That announcement is already added.');
     return;
   }
@@ -632,8 +630,16 @@ async function generateTTS(text, voice, action) {
     });
 
     if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(`API call failed: ${response.statusText} - ${JSON.stringify(errorBody)}`);
+        let errorMsg = `API call failed with status: ${response.status} ${response.statusText}`;
+        try {
+            const errorBody = await response.json();
+            if (errorBody && errorBody.error && errorBody.error.message) {
+                errorMsg = `API Error: ${errorBody.error.message}`;
+            }
+        } catch (e) {
+            // If the response body isn't JSON, use the default message.
+        }
+        throw new Error(errorMsg);
     }
 
     const result = await response.json();
@@ -642,7 +648,7 @@ async function generateTTS(text, voice, action) {
     const mimeType = part?.inlineData?.mimeType;
 
     if (audioData && mimeType) {
-      const sampleRate = 16000; // Hardcoded based on API spec
+      const sampleRate = 16000;
       const pcmData = base64ToArrayBuffer(audioData);
       const wavBlob = pcmToWav(new Int16Array(pcmData), sampleRate);
 
@@ -653,7 +659,6 @@ async function generateTTS(text, voice, action) {
         ttsAudio.play();
         isTtsPlaying = true;
       } else if (action === 'add') {
-        const fileName = `${text}.wav`;
         const arrayBuffer = await wavBlob.arrayBuffer();
         await idbSet(fileName, { name: fileName, buffer: arrayBuffer, type: wavBlob.type, col: 'ann' });
         const card = createCard({ name: text, blob: wavBlob, idbKey: fileName });
