@@ -6,58 +6,62 @@ This is a simple, browser-based soundboard designed for baseball events, built w
 Features
 --------
 
--   **AI-Powered Speech Generation**: Create custom audio clips from text using any text-to-speech API. You can select from a variety of voices to generate announcements.
+- **Customizable Sound Columns**: Two columns, "Announcements" and "Music," for organizing different types of sound clips.
 
--   **Microphone Recording**: Press and hold the microphone button to record your own audio clips, which are then saved as sound cards.
+- **Drag-and-Drop Interface**: Easily add new audio files by dragging them into the designated drop zones.
 
--   **Customizable Sound Columns**: Two columns, "Announcements" and "Music," for organizing different types of sound clips.
+- **Click-to-Import**: Alternatively, click on the drop zone to open a file selection dialog.
 
--   **Drag-and-Drop Interface**: Easily add new audio files by dragging them into the designated drop zones.
+- **Playback Controls**: Each sound card includes a play/pause button and a stop button.
 
--   **Click-to-Import**: Alternatively, click on the drop zone to open a file selection dialog.
+- **Fading Effects**: Toggles are available on each sound card to enable customizable fade-in and fade-out effects when a sound is played or stopped.
 
--   **Playback Controls**: Each sound card includes a play/pause button and a stop button.
+- **Global Fade Out**: A "Fade Out All" button allows you to gracefully stop all currently playing audio tracks and any active AI speech at once.
 
--   **Fading Effects**: Toggles are available on each sound card to enable customizable fade-in and fade-out effects when a sound is played or stopped.
+- **Drag-and-Drop Reordering**: Rearrange sound cards within a column by dragging them to a new position.
 
--   **Global Fade Out**: A "Fade Out All" button allows you to gracefully stop all currently playing audio tracks and any active AI speech at once.
+- **Responsive Design**: The layout adapts to different screen sizes, from mobile to desktop.
 
--   **Drag-and-Drop Reordering**: Rearrange sound cards within a column by dragging them to a new position.
+### AI Version Only
 
--   **Responsive Design**: The layout adapts to different screen sizes, from mobile to desktop.
+- **AI-Powered Speech Generation**: Create custom audio clips from text using any text-to-speech API. You can select from a variety of voices to generate announcements.
+
+- **Microphone Recording**: Press and hold the microphone button to record your own audio clips, which are then saved as sound cards.
 
 How to Use
 ----------
 
-1.  **Open the File**: Simply open the `Baseball Soundboard Pro.html` file in a modern web browser.
+1. **Open the File**: Simply open the Baseball Soundboard Pro.html or 'Baseball Soundboard Pro With AI.html' file in a modern web browser.
 
-2.  **Allow Microphone Access**: The first time you open the page, your browser will ask for microphone permission. This is necessary for the recording feature. Please click "Allow."
+2. **Add Sounds (Local Files)**: Drag and drop audio files (e.g., MP3, WAV) from your computer into either the "Announcements" or "Music" drop zones. You can also click the drop zone to select files.
 
-3.  **Add Sounds (AI)**: In the "Quick Audio Generation" section, type a phrase into the text box, select a voice from the dropdown, and click "➕ Add" to create a new sound card with the AI-generated audio.
+3. **Play Sounds**: Click the ▶ button on a sound card to play the audio. The button will change to a ⏸ icon, which you can click to pause.
 
-4.  **Add Sounds (Recording)**: Press and hold the `🎙️` microphone button to start recording. A red pulsing indicator will appear. Release the button to save the recording as a new sound card.
+4. **Stop Sounds**: Click the ⏹ button to stop the audio and reset the playback position.
 
-5.  **Add Sounds (Local Files)**: Drag and drop audio files (e.g., MP3, WAV) from your computer into either the "Announcements" or "Music" drop zones. You can also click the drop zone to select files.
+5. **Adjust Fades**: Use the sliders at the top of the page to set the default fade-in and fade-out times in seconds. You can enable or disable these fades for each individual sound card using the toggles.
 
-6.  **Play Sounds**: Click the ▶ button on a sound card to play the audio. The button will change to a ⏸ icon, which you can click to pause.
+6. **Fade Out All**: Click the "Fade Out All" button to stop all playing sounds simultaneously with a fade-out effect.
 
-7.  **Stop Sounds**: Click the ⏹ button to stop the audio and reset the playback position.
+7. **Rename/Delete**: Use the ✎ icon to rename a sound card or the 🗑 icon to delete it.
 
-8.  **Adjust Fades**: Use the sliders at the top of the page to set the default fade-in and fade-out times in seconds. You can enable or disable these fades for each individual sound card using the toggles.
+### AI Version Only
 
-9.  **Fade Out All**: Click the "Fade Out All" button to stop all playing sounds simultaneously with a fade-out effect.
+1. **Allow Microphone Access**: The first time you open the page, your browser will ask for microphone permission. This is necessary for the recording feature. Please click "Allow."
 
-10. **Rename/Delete**: Use the ✎ icon to rename a sound card or the 🗑 icon to delete it.
+2. **Add Sounds (AI)**: In the "Quick Audio Generation" section, type a phrase into the text box, select a voice from the dropdown, and click "➕ Add" to create a new sound card with the AI-generated audio.
+
+3. **Add Sounds (Recording)**: Press and hold the 🎙️ microphone button to start recording. A red pulsing indicator will appear. Release the button to save the recording as a new sound card.
 
 Technical Details
 -----------------
 
--   **HTML5**: Provides the document structure.
+- **HTML5**: Provides the document structure.
 
--   **Tailwind CSS**: A utility-first CSS framework for rapid styling and a clean, modern look.
+- **Tailwind CSS**: A utility-first CSS framework for rapid styling and a clean, modern look.
 
--   **JavaScript**: Powers all interactive functionality, including audio playback, drag-and-drop logic, and UI updates.
+- **JavaScript**: Powers all interactive functionality, including audio playback, drag-and-drop logic, and UI updates.
 
--   **Gemini API**: Used for the text-to-speech functionality. **Important Note:** To run the AI features locally, you must provide your own API key. Find line **794** in the code and replace the placeholder with your key: `const apiKey = "YOUR_API_KEY_HERE";`.
+- **Text-to-speech API**: Used for the text-to-speech functionality. **Important Note:** To run the AI features locally, you must provide your own API key. Find line **794** in the code and replace the placeholder with your key: const apiKey = "YOUR_API_KEY_HERE";.
 
--   **MediaRecorder API**: Used for the microphone recording feature.
+- **MediaRecorder API**: Used for the microphone recording feature.
