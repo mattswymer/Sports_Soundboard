@@ -857,94 +857,89 @@ $('#generateBtn').addEventListener('click', () => {
     generateTTS(text, voice, 'add');
 });
 
-// ===== Recording Functionality =====
+// ===== Fixed Recording Functionality =====
 let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
-const recordBtn = $('#recordBtn');
 let microphoneStream = null;
+let hasMicPermission = false;
 
-// New function to get the microphone stream, only requests once
+const recordBtn = $('#recordBtn');
+
 async function getMicrophoneStream() {
-    if (microphoneStream) {
-        return microphoneStream;
-    }
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        microphoneStream = stream;
-        return stream;
-    } catch (err) {
-        console.error('Error accessing microphone:', err);
-        showMessage("Microphone access denied. Please enable it in your browser settings to use the recording feature.");
-        return null;
-    }
+  if (microphoneStream) return microphoneStream;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    microphoneStream = stream;
+    hasMicPermission = true;
+    return stream;
+  } catch (err) {
+    hasMicPermission = false;
+    showMessage("Microphone access denied or unavailable. Please enable it in browser settings.");
+    return null;
+  }
 }
 
-// Rewritten startRecording to take the stream as an argument
-const startRecording = (stream) => {
-    if (isRecording) return; // Prevent double recording
+function startRecording(stream) {
+  if (isRecording || !stream) return;
+  try {
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : '';
+    mediaRecorder = mime
+      ? new MediaRecorder(stream, { mimeType: mime })
+      : new MediaRecorder(stream);
+  } catch (e) {
+    console.error('MediaRecorder not supported:', e);
+    showMessage('Recording not supported on this browser/device.');
+    return;
+  }
+  audioChunks = [];
+  mediaRecorder.ondataavailable = e => {
+    if (e.data && e.data.size > 0) audioChunks.push(e.data);
+  };
+  mediaRecorder.onstop = () => {
+    const type = audioChunks[0]?.type || 'audio/webm';
+    const audioBlob = new Blob(audioChunks, { type });
+    const card = createCard({ name: 'Recording ' + new Date().toLocaleTimeString(), blob: audioBlob });
+    $('#annCol').appendChild(card);
+    updateCounts();
+  };
+  mediaRecorder.start();
+  isRecording = true;
+  recordBtn.classList.add('recording-pulse');
+  recordBtn.innerHTML = '🔴';
+  $('#recordingTooltip').textContent = 'Release to save';
+  $('#recordingTooltip').style.opacity = '1';
+}
 
-    try {
-        mediaRecorder = new MediaRecorder(stream);
-        audioChunks = [];
-        mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
-        };
-        mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            const card = createCard({ name: 'Recording ' + new Date().toLocaleTimeString(), blob: audioBlob });
-            $('#annCol').appendChild(card);
-            updateCounts();
-        };
-        mediaRecorder.start();
-        isRecording = true;
-        recordBtn.classList.add('recording-pulse');
-        recordBtn.innerHTML = '🔴';
-        $('#recordingTooltip').textContent = 'Release to save';
-        $('#recordingTooltip').style.opacity = '1';
+function stopRecording() {
+  if (!isRecording) return;
+  mediaRecorder.stop();
+  isRecording = false;
+  recordBtn.classList.remove('recording-pulse');
+  recordBtn.innerHTML = '🎙️';
+  $('#recordingTooltip').textContent = 'Hold to record';
+  $('#recordingTooltip').style.opacity = '0';
+}
 
-    } catch (err) {
-        console.error('Error starting media recorder:', err);
-        showMessage("Could not start recording. Please try again.");
-    }
-};
-
-const stopRecording = () => {
-    if (isRecording) {
-        mediaRecorder.stop();
-        isRecording = false;
-        recordBtn.classList.remove('recording-pulse');
-        recordBtn.innerHTML = '🎙️';
-        $('#recordingTooltip').textContent = 'Hold to record';
-        $('#recordingTooltip').style.opacity = '0';
-    }
-};
-
-// Use mousedown/mouseup and touchstart/touchend for a hold-to-record experience
-recordBtn.addEventListener('mousedown', async () => {
-    if (!isRecording) {
-        const stream = await getMicrophoneStream();
-        if (stream) {
-            startRecording(stream);
-        }
-    }
+// Use pointer events for desktop + mobile
+recordBtn.addEventListener('pointerdown', async (e) => {
+  e.preventDefault();
+  // First tap: request permission only
+  if (!hasMicPermission) {
+    await getMicrophoneStream();
+    return;
+  }
+  // If permission already granted, start recording on hold
+  startRecording(microphoneStream);
 });
-recordBtn.addEventListener('mouseup', stopRecording);
 
-recordBtn.addEventListener('touchstart', async (e) => {
-    e.preventDefault();
-    if (!isRecording) {
-        const stream = await getMicrophoneStream();
-        if (stream) {
-            startRecording(stream);
-        }
-    }
+recordBtn.addEventListener('pointerup', () => {
+  if (isRecording) stopRecording();
 });
-recordBtn.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    if (isRecording) {
-        stopRecording();
-    }
+recordBtn.addEventListener('pointercancel', () => {
+  if (isRecording) stopRecording();
 });
 
 // Initial setup - The microphone will now be initialized on first click/touch
