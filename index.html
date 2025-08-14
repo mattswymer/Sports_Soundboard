@@ -1,140 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Baseball Soundboard Pro</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  /* Base styles for a dark theme */
-  body {
-    background-color: #1a202c;
-    color: #f7fafc;
-    font-family: 'Inter', sans-serif;
-    padding: 1.5rem;
-  }
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Baseball Soundboard Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- NEW: Added WaveSurfer.js library for waveform visualization -->
+    <script src="https://unpkg.com/wavesurfer.js@7"></script>
+    <style>
+      /* Base styles for a dark theme */
+      body {
+        background-color: #1a202c;
+        color: #f7fafc;
+        font-family: 'Inter', sans-serif;
+        padding: 1.5rem;
+      }
 
-  /* Custom styles for the toggle switch for a cleaner look */
-  .toggle {
-    position: relative;
-    width: 42px;
-    height: 24px;
-  }
-  .toggle input {
-    display: none;
-  }
-  .toggle .track {
-    position: absolute;
-    inset: 0;
-    border-radius: 9999px;
-    background: #475569;
-    transition: 0.2s;
-  }
-  .toggle .thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 20px;
-    height: 20px;
-    background: #fff;
-    border-radius: 9999px;
-    transition: 0.2s;
-  }
-  .toggle input:checked + .track {
-    background: #22c55e;
-  }
-  .toggle input:checked + .track .thumb {
-    transform: translateX(18px);
-  }
+      /* Custom styles for the toggle switch for a cleaner look */
+      .toggle {
+        position: relative;
+        width: 42px;
+        height: 24px;
+      }
+      .toggle input {
+        display: none;
+      }
+      .toggle .track {
+        position: absolute;
+        inset: 0;
+        border-radius: 9999px;
+        background: #475569;
+        transition: 0.2s;
+      }
+      .toggle .thumb {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: #fff;
+        border-radius: 9999px;
+        transition: 0.2s;
+      }
+      .toggle input:checked + .track {
+        background: #22c55e;
+      }
+      .toggle input:checked + .track .thumb {
+        transform: translateX(18px);
+      }
 
-  /* Styling for play/pause/stop buttons */
-  .btn-playpause {
-    background-color: #22c55e;
-    color: white;
-    border-radius: 9999px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  }
-  .btn-stop {
-    background-color: #dc2626;
-    color: white;
-    border-radius: 9999px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  }
-  .dragging { opacity: .5;
-  }
+      /* Styling for play/pause/stop buttons */
+      .btn-playpause, .btn-stop {
+        color: white;
+        border-radius: 9999px;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .btn-playpause { background-color: #22c55e; }
+      .btn-stop { background-color: #dc2626; }
 
-  /* Progress bar styling */
-  .progress-bar-wrap {
-    height: 8px;
-    background-color: #334155;
-    border-radius: 9999px;
-    overflow: hidden;
-  }
-  .progress-bar {
-    height: 100%;
-    width: 0%;
-    background-color: #3b82f6;
-  }
-  .progress-bar-wrap:hover .progress-bar {
-    cursor: pointer;
-  }
+      .dragging { opacity: .5; }
 
-  /* Drop zone styling */
-  .drop-zone {
-    transition: all 0.2s ease;
-  }
-  .drop-zone.drag-over {
-    border-color: #0ea5e9 !important;
-    background-color: rgba(14, 165, 233, 0.1) !important;
-  }
-  .drop-zone.has-items .drop-area {
-    display: none;
-  }
-  .modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.75);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-  }
-  .modal-content {
-    background-color: #1a202c;
-    padding: 2rem;
-    border-radius: 1rem;
-    color: white;
-    max-width: 90%;
-    width: 400px;
-  }
-  .recording-pulse {
-      background-color: #dc2626;
-      animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  @keyframes pulse {
-    0%, 100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.5;
-    }
-  }
-</style>
+      /* Waveform styling */
+      .waveform-container {
+        height: 50px;
+        cursor: pointer;
+      }
+
+      /* Drop zone styling */
+      .drop-zone {
+        transition: all 0.2s ease;
+      }
+      .drop-zone.drag-over {
+        border-color: #0ea5e9 !important;
+        background-color: rgba(14, 165, 233, 0.1) !important;
+      }
+      .drop-zone.has-items .drop-area {
+        display: none;
+      }
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.75);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+      .modal-content {
+        background-color: #1a202c;
+        padding: 2rem;
+        border-radius: 1rem;
+        color: white;
+        max-width: 90%;
+        width: 400px;
+      }
+      .recording-pulse {
+          background-color: #dc2626;
+          animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+    </style>
 </head>
 <body class="bg-gray-900 text-white p-6">
   <header class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
@@ -161,7 +138,7 @@
         <input id="fadeOutSlider" type="range" min="0" max="8" step="0.1" value="2.0" class="w-24 md:w-40" />
         <span id="fadeOutVal" class="w-8 text-right">2.0</span>
       </div>
-      <button id="fadeAll" class="bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-2 rounded-xl font-semibold shadow transition-transform active:scale-95">Fade Out All</button>
+      <button id="fadeAll" class="bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-2 rounded-xl font-semibold shadow transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Fade Out All</button>
     </div>
   </header>
 
@@ -338,14 +315,13 @@ function loadSettingsLS() {
 let fadeInTime = 2.0;
 let fadeOutTime = 2.0;
 const columns = [{ wrap: $('#annCol'), input: $('#annInput') }, { wrap: $('#musicCol'), input: $('#musicInput') }];
-const activeAudios = new Set();
+const activeAudios = new Map(); // Map to store card element -> wavesurfer instance
 let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
 let microphoneStream = null;
 let hasMicPermission = false;
 let activeUtterances = new Set();
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // ===== UI & Event Handling =====
 function setHasItemsClass(col) {
@@ -373,218 +349,203 @@ function makeToggle(labelText) {
   return { wrap, input: wrap.querySelector('input') };
 }
 
-// Refactored Card builder for both audio files and TTS announcements
-async function createCard({ name, url, blob, idbKey, text, voiceName }) {
-  const card = document.createElement('div');
-  card.dataset.idbKey = idbKey || null;
-  card.className = 'sound-card group/card bg-slate-800 border border-slate-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-2 cursor-grab';
-  card.draggable = true;
-  card.dataset.type = text ? 'tts' : 'audio';
+/**
+ * Creates the header part of a sound card.
+ */
+function createCardHeader(cardData) {
+    const { name } = cardData;
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3';
 
-  const row = document.createElement('div');
-  row.className = 'flex items-center gap-3';
-  card.appendChild(row);
+    const dragDot = document.createElement('div');
+    dragDot.className = 'text-slate-500 cursor-grab select-none';
+    dragDot.textContent = '⋮⋮';
 
-  const dragDot = document.createElement('div');
-  dragDot.className = 'text-slate-500 cursor-grab select-none';
-  dragDot.textContent = '⋮⋮';
+    const playBtn = document.createElement('button');
+    playBtn.className = 'btn-playpause shrink-0 transition-transform active:scale-95';
+    playBtn.setAttribute('aria-label', 'Play');
+    playBtn.innerHTML = '▶';
 
-  const playBtn = document.createElement('button');
-  playBtn.className = 'btn-playpause shrink-0 transition-transform active:scale-95';
-  playBtn.setAttribute('aria-label', 'Play');
-  playBtn.innerHTML = '▶';
+    const stopBtn = document.createElement('button');
+    stopBtn.className = 'btn-stop shrink-0 transition-transform active:scale-95';
+    stopBtn.setAttribute('aria-label', 'Stop');
+    stopBtn.innerHTML = '⏹';
 
-  const stopBtn = document.createElement('button');
-  stopBtn.className = 'btn-stop shrink-0 transition-transform active:scale-95';
-  stopBtn.setAttribute('aria-label', 'Stop');
-  stopBtn.innerHTML = '⏹';
+    const title = document.createElement('div');
+    title.className = 'font-semibold flex-1 truncate';
+    title.textContent = name;
 
-  const title = document.createElement('div');
-  title.className = 'font-semibold flex-1 truncate';
-  title.textContent = name;
+    const editBtn = document.createElement('button');
+    editBtn.className = 'text-slate-300 hover:text-white transition-transform active:scale-95';
+    editBtn.setAttribute('title', 'Rename');
+    editBtn.innerHTML = '✎';
 
-  const editBtn = document.createElement('button');
-  editBtn.className = 'text-slate-300 hover:text-white transition-transform active:scale-95';
-  editBtn.setAttribute('title', 'Rename');
-  editBtn.innerHTML = '✎';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'text-slate-300 hover:text-red-400 transition-transform active:scale-95';
+    delBtn.setAttribute('title', 'Delete');
+    // MINOR FIX: Changed delete icon to an 'X'
+    delBtn.innerHTML = '✖';
 
-  const delBtn = document.createElement('button');
-  delBtn.className = 'text-slate-300 hover:text-red-400 transition-transform active:scale-95';
-  delBtn.setAttribute('title', 'Delete');
-  delBtn.innerHTML = '🗑';
+    row.append(dragDot, playBtn, stopBtn, title, editBtn, delBtn);
+    return { row, playBtn, stopBtn, title, editBtn, delBtn };
+}
 
-  row.append(dragDot, playBtn, stopBtn, title, editBtn, delBtn);
+/**
+ * Creates the details/controls part of an audio card.
+ */
+function createAudioCardDetails(cardData) {
+    const { volume } = cardData;
+    const details = document.createElement('div');
+    details.className = 'pl-14 flex flex-col gap-3';
 
-  let isPlaying = false;
-  let sourceNode, gainNode;
-
-  if (card.dataset.type === 'audio') {
-    // Logic for local audio files using Web Audio API
     const toggles = document.createElement('div');
-    toggles.className = 'flex items-center gap-4 pl-14';
+    toggles.className = 'flex items-center gap-4';
     const fadeInT = makeToggle('Fade In');
     const fadeOutT = makeToggle('Fade Out');
     fadeInT.input.checked = true;
     fadeOutT.input.checked = true;
     toggles.append(fadeInT.wrap, fadeOutT.wrap);
-    card.appendChild(toggles);
+    details.appendChild(toggles);
 
-    const progressWrap = document.createElement('div');
-    progressWrap.className = 'pl-14';
-    progressWrap.innerHTML = `
-      <div class="progress-bar-wrap"><div class="progress-bar"></div></div>
+    const volumeWrap = document.createElement('div');
+    volumeWrap.className = 'flex items-center gap-2';
+    volumeWrap.innerHTML = `<span class="text-xs w-12">Volume</span>`;
+    const volumeSlider = document.createElement('input');
+    volumeSlider.type = 'range';
+    volumeSlider.min = 0;
+    volumeSlider.max = 1;
+    volumeSlider.step = 0.01;
+    volumeSlider.value = volume;
+    volumeSlider.className = 'w-full';
+    volumeWrap.appendChild(volumeSlider);
+    details.appendChild(volumeWrap);
+
+    const progressContainer = document.createElement('div');
+    progressContainer.innerHTML = `
+      <div class="waveform-container bg-slate-700/50 rounded-lg" role="button" tabindex="0" aria-label="Seek audio position"></div>
       <div class="flex justify-between text-xs text-slate-300 mt-0.5">
         <span class="cur">0:00</span>
         <span class="dur">0:00</span>
       </div>`;
-    const progressBg = progressWrap.querySelector('.progress-bar-wrap');
-    const progress = progressWrap.querySelector('.progress-bar');
-    const curLbl = progressWrap.querySelector('.cur');
-    const durLbl = progressWrap.querySelector('.dur');
-    card.appendChild(progressWrap);
+    details.appendChild(progressContainer);
 
-    card.audioBuffer = null;
-    if (blob) {
-      const arrayBuf = await blob.arrayBuffer();
-      card.audioBuffer = await audioCtx.decodeAudioData(arrayBuf);
-    } else if (url) {
-      const resp = await fetch(url);
-      const data = await resp.arrayBuffer();
-      card.audioBuffer = await audioCtx.decodeAudioData(data);
-    }
+    const waveformEl = progressContainer.querySelector('.waveform-container');
+    const curLbl = progressContainer.querySelector('.cur');
+    const durLbl = progressContainer.querySelector('.dur');
 
-    if (card.audioBuffer) {
-        durLbl.textContent = formatTime(card.audioBuffer.duration);
-    }
+    return { details, fadeInT, fadeOutT, volumeSlider, waveformEl, curLbl, durLbl };
+}
 
-    let startTime = 0;
-    let pausedAt = 0;
-    let updateProgressLoop;
+/**
+ * Main card builder, using WaveSurfer.js.
+ */
+async function createCard(cardData) {
+  const { name, blob, idbKey, text, voiceName, volume = 1.0 } = cardData;
+  const card = document.createElement('div');
+  card.dataset.idbKey = idbKey || null;
+  card.className = 'sound-card group/card bg-slate-800 border border-slate-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-3 cursor-grab';
+  card.draggable = true;
+  card.dataset.type = text ? 'tts' : 'audio';
 
-    function playAudio() {
-        if (!card.audioBuffer) return;
-        sourceNode = audioCtx.createBufferSource();
-        sourceNode.buffer = card.audioBuffer;
+  const { row, playBtn, stopBtn, title, editBtn, delBtn } = createCardHeader(cardData);
+  card.appendChild(row);
 
-        gainNode = audioCtx.createGain();
-        sourceNode.connect(gainNode);
-        gainNode.connect(audioCtx.destination);
+  let utterance;
 
-        sourceNode.onended = () => {
-            isPlaying = false;
-            setActive(false);
-            progress.style.width = '0%';
-            curLbl.textContent = '0:00';
-            activeAudios.delete(card);
-            sourceNode = null;
-            pausedAt = 0;
-            cancelAnimationFrame(updateProgressLoop);
-        };
+  if (card.dataset.type === 'audio') {
+    const { details, fadeInT, fadeOutT, volumeSlider, waveformEl, curLbl, durLbl } = createAudioCardDetails(cardData);
+    card.appendChild(details);
 
-        const offset = pausedAt % card.audioBuffer.duration;
-        sourceNode.start(0, offset);
-        startTime = audioCtx.currentTime - offset;
+    const wavesurfer = WaveSurfer.create({
+        container: waveformEl,
+        waveColor: '#64748b',
+        progressColor: '#3b82f6',
+        height: 50,
+        cursorWidth: 1,
+        cursorColor: '#f87171',
+        barWidth: 2,
+        barRadius: 2,
+        url: URL.createObjectURL(blob),
+        fadeIn: fadeInT.input.checked ? (fadeInTime * 1000) : 0,
+    });
 
-        if (fadeInT.input.checked) {
-            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + fadeInTime);
-        } else {
-            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-        }
+    activeAudios.set(card, wavesurfer);
 
-        isPlaying = true;
-        setActive(true);
-        activeAudios.add(card);
-        updateProgress();
-    }
+    wavesurfer.on('ready', (duration) => {
+        durLbl.textContent = formatTime(duration);
+        wavesurfer.setVolume(volumeSlider.value);
+    });
 
-    function stopAudio() {
-        if (!sourceNode) return;
+    wavesurfer.on('timeupdate', (currentTime) => {
+        curLbl.textContent = formatTime(currentTime);
+    });
 
-        if (fadeOutT.input.checked) {
-            const currentVolume = gainNode.gain.value;
-            gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
-            gainNode.gain.setValueAtTime(currentVolume, audioCtx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeOutTime);
-            sourceNode.onended = null;
-            sourceNode.stop(audioCtx.currentTime + fadeOutTime);
+    wavesurfer.on('finish', () => {
+        playBtn.innerHTML = '▶';
+        playBtn.setAttribute('aria-label', 'Play');
+        card.classList.remove('ring-2', 'ring-blue-400', 'bg-slate-700');
+    });
 
-            setTimeout(() => {
-                isPlaying = false;
-                setActive(false);
-                activeAudios.delete(card);
-                pausedAt = 0;
-                progress.style.width = '0%';
-                curLbl.textContent = '0:00';
-                sourceNode = null;
-                cancelAnimationFrame(updateProgressLoop);
-            }, fadeOutTime * 1000);
+    wavesurfer.on('play', () => {
+        playBtn.innerHTML = '⏸';
+        playBtn.setAttribute('aria-label', 'Pause');
+        card.classList.add('ring-2', 'ring-blue-400', 'bg-slate-700');
+    });
 
-        } else {
-            sourceNode.stop();
-            isPlaying = false;
-            setActive(false);
-            activeAudios.delete(card);
-            pausedAt = 0;
-            progress.style.width = '0%';
-            curLbl.textContent = '0:00';
-            sourceNode = null;
-            cancelAnimationFrame(updateProgressLoop);
-        }
-    }
-
-    function updateProgress() {
-        if (!isPlaying || !card.audioBuffer) {
-            return;
-        }
-        const elapsed = audioCtx.currentTime - startTime;
-        pausedAt = elapsed;
-        if (elapsed <= card.audioBuffer.duration) {
-            progress.style.width = `${(elapsed / card.audioBuffer.duration) * 100}%`;
-            curLbl.textContent = formatTime(elapsed);
-            updateProgressLoop = requestAnimationFrame(updateProgress);
-        }
-    }
+    wavesurfer.on('pause', () => {
+        playBtn.innerHTML = '▶';
+        playBtn.setAttribute('aria-label', 'Play');
+        card.classList.remove('ring-2', 'ring-blue-400', 'bg-slate-700');
+    });
 
     playBtn.addEventListener('click', () => {
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      if (!isPlaying) {
-        playAudio();
-      } else {
-        if (sourceNode) {
-            pausedAt = audioCtx.currentTime - startTime;
-            sourceNode.onended = null;
-            sourceNode.stop();
-            isPlaying = false;
-            setActive(false);
-            activeAudios.delete(card);
-            cancelAnimationFrame(updateProgressLoop);
-        }
-      }
+        wavesurfer.setOptions({ fadeIn: fadeInT.input.checked ? (fadeInTime * 1000) : 0 });
+        wavesurfer.playPause();
     });
 
+    // MAJOR FIX: Corrected stop button logic to fade out properly.
     stopBtn.addEventListener('click', () => {
-        stopAudio();
-    });
+        if (fadeOutT.input.checked && wavesurfer.isPlaying()) {
+            const currentVolume = wavesurfer.getVolume();
+            let start;
+            const fadeOutDuration = fadeOutTime * 1000;
 
-    progressBg.addEventListener('click', (e) => {
-      if (card.audioBuffer && card.audioBuffer.duration > 0) {
-        const rect = progressBg.getBoundingClientRect();
-        const newTime = ((e.clientX - rect.left) / rect.width) * card.audioBuffer.duration;
-        if (isPlaying) {
-            stopAudio();
-            pausedAt = newTime;
-            playAudio();
+            const fade = (timestamp) => {
+                if (start === undefined) start = timestamp;
+                const elapsed = timestamp - start;
+                const progress = Math.max(0, 1 - (elapsed / fadeOutDuration));
+
+                wavesurfer.setVolume(currentVolume * progress);
+
+                if (progress > 0) {
+                    requestAnimationFrame(fade);
+                } else {
+                    wavesurfer.stop();
+                    wavesurfer.setVolume(currentVolume); // Restore volume for next play
+                }
+            };
+            requestAnimationFrame(fade);
         } else {
-            curLbl.textContent = formatTime(newTime);
-            progress.style.width = `${(newTime / card.audioBuffer.duration) * 100}%`;
-            pausedAt = newTime;
+            wavesurfer.stop();
         }
-      }
     });
 
-  } else {
-    // Logic for TTS cards
+    volumeSlider.addEventListener('input', async () => {
+        wavesurfer.setVolume(volumeSlider.value);
+        try {
+            if (card.dataset.idbKey) {
+                const rec = await idbGet(card.dataset.idbKey);
+                if (rec) {
+                    rec.volume = parseFloat(volumeSlider.value);
+                    await idbSet(card.dataset.idbKey, rec);
+                }
+            }
+        } catch(e) {
+            console.error("Failed to save volume", e);
+        }
+    });
+
+  } else { // TTS Card Logic
     card.dataset.text = text;
     card.dataset.voice = voiceName;
 
@@ -594,12 +555,10 @@ async function createCard({ name, url, blob, idbKey, text, voiceName }) {
         utterance = new SpeechSynthesisUtterance(text);
         utterance.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
         window.speechSynthesis.speak(utterance);
-        isPlaying = true;
-        setActive(true);
         activeUtterances.add(utterance);
+        utterance.onstart = () => card.classList.add('ring-2', 'ring-blue-400', 'bg-slate-700');
         utterance.onend = () => {
-          isPlaying = false;
-          setActive(false);
+          card.classList.remove('ring-2', 'ring-blue-400', 'bg-slate-700');
           activeUtterances.delete(utterance);
         };
       } else {
@@ -610,8 +569,7 @@ async function createCard({ name, url, blob, idbKey, text, voiceName }) {
     stopBtn.addEventListener('click', () => {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        isPlaying = false;
-        setActive(false);
+        card.classList.remove('ring-2', 'ring-blue-400', 'bg-slate-700');
         activeUtterances.clear();
       }
     });
@@ -619,56 +577,49 @@ async function createCard({ name, url, blob, idbKey, text, voiceName }) {
 
   delBtn.addEventListener('click', async () => {
     if (!confirm('Delete this sound?')) return;
-    try {
-      if (card.dataset.type === 'audio') {
-        if (sourceNode) stopAudio();
-      } else {
+
+    if (card.dataset.type === 'audio') {
+        const ws = activeAudios.get(card);
+        if (ws) {
+            ws.destroy();
+            activeAudios.delete(card);
+        }
+    } else {
         if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-      }
-    } catch {}
+    }
 
     const originalText = delBtn.innerHTML;
     delBtn.innerHTML = '✔️';
     delBtn.classList.add('text-red-400');
-    setTimeout(() => {
+    setTimeout(async () => {
       card.remove();
       updateCounts();
-      if (card.dataset.idbKey) idbDelete(card.dataset.idbKey);
-      if (blob) URL.revokeObjectURL(url);
+      if (card.dataset.idbKey) {
+        try {
+          await idbDelete(card.dataset.idbKey);
+        } catch (e) {
+          console.error("Failed to delete from DB", e);
+          showMessage("Could not delete sound from database.");
+        }
+      }
     }, 500);
-
   });
 
-  function setActive(on) {
-    if (on) {
-      card.classList.add('ring-2', 'ring-blue-400', 'bg-slate-700');
-      playBtn.innerHTML = '⏸';
-      playBtn.setAttribute('aria-label', 'Pause');
-    } else {
-      card.classList.remove('ring-2', 'ring-blue-400', 'bg-slate-700');
-      playBtn.innerHTML = '▶';
-      playBtn.setAttribute('aria-label', 'Play');
-    }
-  }
-
   editBtn.addEventListener('click', async () => {
-    const currentName = title.textContent.trim();
+    const currentName = title.textContent.trim().replace('⚠️ ', '');
     const newName = prompt('Rename sound', currentName);
     if (newName && newName.trim() && newName.trim() !== currentName) {
       title.textContent = newName.trim();
       if (card.dataset.idbKey) {
-        const rec = await idbGet(card.dataset.idbKey);
-        if (rec) {
-          rec.name = newName.trim();
-          await idbSet(card.dataset.idbKey, rec);
-
-          const originalText = editBtn.innerHTML;
-          editBtn.innerHTML = '✔️';
-          editBtn.classList.add('text-green-400');
-          setTimeout(() => {
-            editBtn.innerHTML = originalText;
-            editBtn.classList.remove('text-green-400');
-          }, 800);
+        try {
+            const rec = await idbGet(card.dataset.idbKey);
+            if (rec) {
+              rec.name = newName.trim();
+              await idbSet(card.dataset.idbKey, rec);
+            }
+        } catch (e) {
+            console.error("Failed to rename in DB", e);
+            showMessage("Could not save new name.");
         }
       }
     }
@@ -682,50 +633,54 @@ async function createCard({ name, url, blob, idbKey, text, voiceName }) {
   return card;
 }
 
-// Function to add files from a file system to a column
 async function addFilesToColumn(files, columnEl) {
   for (const file of files) {
     if ([...columnEl.querySelectorAll('.sound-card')].some(c => c.dataset.idbKey === file.name)) continue;
-
-    const arrayBuffer = await file.arrayBuffer();
-    const col = columnEl.id === 'annCol' ? 'ann' : 'music';
-    await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col });
-    const blob = new Blob([arrayBuffer], { type: file.type });
-
-    const card = await createCard({
-      name: file.name.replace(/\.[^/.]+$/, ''),
-      blob,
-      idbKey: file.name
-    });
-    columnEl.appendChild(card);
-    updateCounts();
-  }
-}
-
-// Function to restore saved sounds from IndexedDB
-async function restoreFromDB() {
-  const keys = await idbGetAllKeys();
-  for (const key of keys) {
-    const rec = await idbGet(key);
-    if (!rec || !rec.col) continue;
-
-    if (rec.type === 'tts') {
-      const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
-      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.dataset.idbKey === key)) continue;
-      const card = await createCard({ name: rec.name, text: rec.text, voiceName: rec.voiceName, idbKey: key });
-      targetCol.appendChild(card);
-    } else {
-      const blob = new Blob([rec.buffer], { type: rec.type });
-      const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
-      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.dataset.idbKey === key)) continue;
-      const card = await createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob, idbKey: key });
-      targetCol.appendChild(card);
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: file.type });
+      const col = columnEl.id === 'annCol' ? 'ann' : 'music';
+      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col, volume: 1.0 });
+      const card = await createCard({
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        blob,
+        idbKey: file.name
+      });
+      columnEl.appendChild(card);
+      updateCounts();
+    } catch(e) {
+      console.error(`Failed to process file ${file.name}:`, e);
+      showMessage(`Could not process or save the file: ${file.name}`);
     }
   }
-  updateCounts();
 }
 
-// ===== Browser TTS Functionality =====
+async function restoreFromDB() {
+  try {
+    const keys = await idbGetAllKeys();
+    for (const key of keys) {
+      const rec = await idbGet(key);
+      if (!rec || !rec.col) continue;
+
+      const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
+      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.dataset.idbKey === key)) continue;
+
+      if (rec.type === 'tts') {
+        const card = await createCard({ name: rec.name, text: rec.text, voiceName: rec.voiceName, idbKey: key });
+        targetCol.appendChild(card);
+      } else {
+        const blob = new Blob([rec.buffer], { type: rec.type });
+        const card = await createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob, idbKey: key, volume: rec.volume || 1.0 });
+        targetCol.appendChild(card);
+      }
+    }
+    updateCounts();
+  } catch(e) {
+    console.error("Failed to restore from DB:", e);
+    showMessage("Could not restore saved sounds from the database.");
+  }
+}
+
 function generateBrowserTTS(text, voiceName, action) {
   if (!('speechSynthesis' in window)) {
     showMessage("Browser TTS is not supported in this browser.");
@@ -753,15 +708,19 @@ function generateBrowserTTS(text, voiceName, action) {
   } else if (action === 'add') {
     const name = text;
     const textKey = `tts_${name}_${voiceName}_${Date.now()}`;
-    createCard({ name, text, voiceName, idbKey: textKey }).then(card => {
-        $('#annCol').appendChild(card);
-        updateCounts();
-        idbSet(textKey, { name: text, text, voiceName, type: 'tts', col: 'ann' });
-    });
+    try {
+      createCard({ name, text, voiceName, idbKey: textKey }).then(card => {
+          $('#annCol').appendChild(card);
+          updateCounts();
+          idbSet(textKey, { name: text, text, voiceName, type: 'tts', col: 'ann' });
+      });
+    } catch (e) {
+      console.error("Failed to create TTS card:", e);
+      showMessage("Could not create the TTS sound card.");
+    }
   }
 }
 
-// ===== Recording Functionality =====
 async function getMicrophoneStream() {
   if (microphoneStream) return microphoneStream;
   try {
@@ -778,8 +737,8 @@ async function getMicrophoneStream() {
 function startRecording(stream) {
   if (isRecording || !stream) return;
   try {
-    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
-    mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+    mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
   } catch (e) {
     console.error('MediaRecorder not supported:', e);
     showMessage('Recording not supported on this browser/device.');
@@ -788,14 +747,19 @@ function startRecording(stream) {
   audioChunks = [];
   mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
   mediaRecorder.onstop = async () => {
-    const type = audioChunks[0]?.type || 'audio/webm';
-    const audioBlob = new Blob(audioChunks, { type });
-    const fileName = `Recording_${Date.now()}.${type.split('/')[1] || 'webm'}`;
-    const arrayBuffer = await audioBlob.arrayBuffer();
-    await idbSet(fileName, { name: fileName, buffer: arrayBuffer, type, col: 'ann' });
-    const card = await createCard({ name: 'Recording ' + new Date().toLocaleTimeString(), blob: audioBlob, idbKey: fileName });
-    $('#annCol').appendChild(card);
-    updateCounts();
+    try {
+      const type = audioChunks[0]?.type || 'audio/webm';
+      const audioBlob = new Blob(audioChunks, { type });
+      const fileName = `Recording_${Date.now()}.${type.split('/')[1]?.split(';')[0] || 'webm'}`;
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      await idbSet(fileName, { name: fileName, buffer: arrayBuffer, type, col: 'ann', volume: 1.0 });
+      const card = await createCard({ name: 'Recording ' + new Date().toLocaleTimeString(), blob: audioBlob, idbKey: fileName });
+      $('#annCol').appendChild(card);
+      updateCounts();
+    } catch(e) {
+        console.error("Failed to save recording:", e);
+        showMessage("Could not save the new recording.");
+    }
   };
   mediaRecorder.start();
   isRecording = true;
@@ -817,13 +781,16 @@ function stopRecording() {
 const recordBtn = $('#recordBtn');
 recordBtn.addEventListener('pointerdown', async (e) => {
   e.preventDefault();
-  if (!hasMicPermission) { await getMicrophoneStream(); return; }
-  startRecording(microphoneStream);
+  if (!hasMicPermission) {
+    const stream = await getMicrophoneStream();
+    if(stream) startRecording(stream);
+  } else {
+    startRecording(microphoneStream);
+  }
 });
 recordBtn.addEventListener('pointerup', () => { if (isRecording) stopRecording(); });
 recordBtn.addEventListener('pointercancel', () => { if (isRecording) stopRecording(); });
 
-// ===== Initialization and Event Listeners =====
 const voiceSelect = $('#voiceSelect');
 window.speechSynthesis.onvoiceschanged = () => {
   const voices = window.speechSynthesis.getVoices();
@@ -834,26 +801,22 @@ window.speechSynthesis.onvoiceschanged = () => {
     option.textContent = `${voice.name} (${voice.lang})`;
     voiceSelect.appendChild(option);
   });
-  // If voices are already loaded, populate immediately
   if (voices.length > 0) {
     const lastSelectedVoice = localStorage.getItem('lastSelectedVoice');
     if (lastSelectedVoice && voices.some(v => v.name === lastSelectedVoice)) {
         voiceSelect.value = lastSelectedVoice;
-    } else {
+    } else if (voices[0]) {
         voiceSelect.value = voices[0].name;
     }
   }
 };
-
 voiceSelect.addEventListener('change', () => {
     localStorage.setItem('lastSelectedVoice', voiceSelect.value);
 });
 
-// Initial voice population call
 if (window.speechSynthesis.getVoices().length > 0) {
   window.speechSynthesis.onvoiceschanged();
 }
-
 
 $('#previewBtn').addEventListener('click', () => {
   const text = $('#ttsText').value.trim();
@@ -876,29 +839,25 @@ $('#fadeOutSlider').addEventListener('input', e => {
   saveSettingsLS({ fadeIn: fadeInTime, fadeOut: fadeOutTime });
 });
 $('#fadeAll').addEventListener('click', async () => {
-  const btn = $('#fadeAll');
-  if (btn.disabled) return;
-  if (activeAudios.size === 0) return;
+    if (activeAudios.size === 0 && activeUtterances.size === 0) return;
 
-  btn.disabled = true;
-  const originalText = btn.textContent;
-  btn.textContent = 'Fading…';
+    const fadeAllBtn = $('#fadeAll');
+    fadeAllBtn.disabled = true;
+    const originalText = fadeAllBtn.textContent;
+    fadeAllBtn.textContent = 'Fading…';
 
-  window.speechSynthesis.cancel();
+    window.speechSynthesis.cancel();
+    activeUtterances.clear();
+    $$('.sound-card[data-type="tts"]').forEach(c => c.classList.remove('ring-2', 'ring-blue-400', 'bg-slate-700'));
 
-  const fadePromises = [...activeAudios].map(card => {
-      return new Promise(resolve => {
-          // Use setTimeout here for demonstration as the onended callback is tricky to manage
-          // for a global fade-out without a larger refactor.
-          card.querySelector('.btn-stop').click();
-          setTimeout(resolve, fadeOutTime * 1000);
-      });
-  });
+    activeAudios.forEach((ws, card) => {
+        card.querySelector('.btn-stop')?.click();
+    });
 
-  await Promise.all(fadePromises);
-
-  btn.textContent = originalText;
-  btn.disabled = false;
+    setTimeout(() => {
+        fadeAllBtn.textContent = originalText;
+        fadeAllBtn.disabled = false;
+    }, fadeOutTime * 1000 + 100);
 });
 columns.forEach(({ wrap, input }) => {
   wrap.addEventListener('click', (e) => {
@@ -939,12 +898,17 @@ columns.forEach(({ wrap, input }) => {
         wrap.appendChild(dragging);
         updateCounts();
         if (dragging.dataset.idbKey) {
+          try {
             const newCol = wrap.id === 'annCol' ? 'ann' : 'music';
             const rec = await idbGet(dragging.dataset.idbKey);
             if (rec) {
                 rec.col = newCol;
                 await idbSet(dragging.dataset.idbKey, rec);
             }
+          } catch (e) {
+            console.error("Failed to update column in DB", e);
+            showMessage("Could not save the new location of the sound.");
+          }
         }
       }
     }
@@ -974,16 +938,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('#fadeInVal').textContent = fadeInTime.toFixed(1);
   $('#fadeOutVal').textContent = fadeOutTime.toFixed(1);
   await restoreFromDB();
-  if (audioCtx.state === 'suspended') {
-      document.body.addEventListener('click', () => {
-          if (audioCtx.state === 'suspended') {
-              audioCtx.resume();
-          }
-      }, { once: true });
-  }
 });
 
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js');
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./service-worker.js').catch(err => {
+    console.error('Service Worker registration failed:', err);
+  });
+}
 </script>
 </body>
 </html>
