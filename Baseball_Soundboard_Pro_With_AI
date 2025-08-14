@@ -152,11 +152,9 @@
     </div>
   </header>
 
-  <!-- Quick Audio Generation Section -->
   <section class="mb-6">
     <div class="bg-slate-800/50 border border-slate-700 rounded-2xl p-4">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-        <!-- Text Input (50% on large screens) -->
         <div class="lg:col-span-6">
           <label for="ttsText" class="sr-only">Text to generate speech from</label>
           <input
@@ -167,7 +165,6 @@
           />
         </div>
 
-        <!-- Voice Selection and Buttons (37.5% on large screens) -->
         <div class="lg:col-span-5 flex flex-col sm:flex-row gap-2">
           <label for="voiceSelect" class="sr-only">Select voice</label>
           <select id="voiceSelect" class="bg-slate-900 border border-slate-600 rounded-xl px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm min-w-0 flex-1">
@@ -183,7 +180,6 @@
           </div>
         </div>
 
-        <!-- Recording Section (12.5% on large screens) -->
         <div class="lg:col-span-1 flex justify-center lg:justify-end">
           <div class="relative">
             <button
@@ -203,7 +199,6 @@
   </section>
 
   <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Announcements Column -->
     <section>
       <div class="flex items-center gap-2 text-lg font-semibold mb-2">
         <span>📢 Announcements</span>
@@ -221,7 +216,6 @@
       <input id="annInput" type="file" accept="audio/*" multiple class="hidden" />
     </section>
 
-    <!-- Music Column -->
     <section>
       <div class="flex items-center gap-2 text-lg font-semibold mb-2">
         <span>🎵 Music</span>
@@ -240,7 +234,6 @@
     </section>
   </main>
 
-  <!-- Message Modal -->
   <div id="modal" class="modal-overlay hidden">
     <div class="modal-content">
       <h3 class="text-xl font-bold mb-4">Message</h3>
@@ -791,7 +784,7 @@ async function generateTTS(text, voice, action) {
           };
           // NOTE: When running this file locally, the API key is not automatically provided.
           // You will need to get your own API key and replace the empty string below.
-          const apiKey = "YOUR_API_KEY_HERE";
+          const apiKey = "AIzaSyAFHL4g545yLj7-VkEiaBbWuzauxmd3K90";
           const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
 
           const response = await fetch(apiUrl, {
@@ -871,26 +864,28 @@ let isRecording = false;
 const recordBtn = $('#recordBtn');
 let microphoneStream = null;
 
-const initMicrophone = async () => {
+// New function to get the microphone stream, only requests once
+async function getMicrophoneStream() {
+    if (microphoneStream) {
+        return microphoneStream;
+    }
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Store the stream so we don't have to re-request permission
         microphoneStream = stream;
-        console.log('Microphone access granted.');
+        return stream;
     } catch (err) {
         console.error('Error accessing microphone:', err);
         showMessage("Microphone access denied. Please enable it in your browser settings to use the recording feature.");
+        return null;
     }
 }
 
-const startRecording = async () => {
-    if (!microphoneStream) {
-        showMessage("Microphone access is not available. Please allow permission to record.");
-        return;
-    }
+// Rewritten startRecording to take the stream as an argument
+const startRecording = (stream) => {
+    if (isRecording) return; // Prevent double recording
 
     try {
-        mediaRecorder = new MediaRecorder(microphoneStream);
+        mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
         mediaRecorder.ondataavailable = event => {
             audioChunks.push(event.data);
@@ -926,14 +921,34 @@ const stopRecording = () => {
 };
 
 // Use mousedown/mouseup and touchstart/touchend for a hold-to-record experience
-recordBtn.addEventListener('mousedown', startRecording);
+recordBtn.addEventListener('mousedown', async () => {
+    if (!isRecording) {
+        const stream = await getMicrophoneStream();
+        if (stream) {
+            startRecording(stream);
+        }
+    }
+});
 recordBtn.addEventListener('mouseup', stopRecording);
-recordBtn.addEventListener('touchstart', startRecording);
-recordBtn.addEventListener('touchend', stopRecording);
 
-// Initial setup
+recordBtn.addEventListener('touchstart', async (e) => {
+    e.preventDefault();
+    if (!isRecording) {
+        const stream = await getMicrophoneStream();
+        if (stream) {
+            startRecording(stream);
+        }
+    }
+});
+recordBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (isRecording) {
+        stopRecording();
+    }
+});
+
+// Initial setup - The microphone will now be initialized on first click/touch
 window.onload = () => {
-    initMicrophone();
     const defaultVoice = Object.keys(TTS_VOICES)[0];
     if (defaultVoice) {
         voiceSelect.value = defaultVoice;
