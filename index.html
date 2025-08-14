@@ -8,8 +8,8 @@
 <style>
   /* Base styles for a dark theme */
   body {
-    background-color: #1a202c; /* gray-900 */
-    color: #f7fafc; /* gray-100 */
+    background-color: #1a202c;
+    color: #f7fafc;
     font-family: 'Inter', sans-serif;
     padding: 1.5rem;
   }
@@ -27,7 +27,7 @@
     position: absolute;
     inset: 0;
     border-radius: 9999px;
-    background: #475569; /* slate-700 */
+    background: #475569;
     transition: 0.2s;
   }
   .toggle .thumb {
@@ -41,7 +41,7 @@
     transition: 0.2s;
   }
   .toggle input:checked + .track {
-    background: #22c55e; /* green-500 */
+    background: #22c55e;
   }
   .toggle input:checked + .track .thumb {
     transform: translateX(18px);
@@ -49,7 +49,7 @@
 
   /* Styling for play/pause/stop buttons */
   .btn-playpause {
-    background-color: #22c55e; /* green-500 */
+    background-color: #22c55e;
     color: white;
     border-radius: 9999px;
     width: 40px;
@@ -61,7 +61,7 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
   .btn-stop {
-    background-color: #dc2626; /* red-600 */
+    background-color: #dc2626;
     color: white;
     border-radius: 9999px;
     width: 40px;
@@ -72,19 +72,20 @@
     font-size: 18px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
-  .dragging { opacity: .5; }
+  .dragging { opacity: .5;
+  }
 
   /* Progress bar styling */
   .progress-bar-wrap {
     height: 8px;
-    background-color: #334155; /* slate-800 */
+    background-color: #334155;
     border-radius: 9999px;
     overflow: hidden;
   }
   .progress-bar {
     height: 100%;
     width: 0%;
-    background-color: #3b82f6; /* blue-500 */
+    background-color: #3b82f6;
   }
   .progress-bar-wrap:hover .progress-bar {
     cursor: pointer;
@@ -97,6 +98,9 @@
   .drop-zone.drag-over {
     border-color: #0ea5e9 !important;
     background-color: rgba(14, 165, 233, 0.1) !important;
+  }
+  .drop-zone.has-items .drop-area {
+    display: none;
   }
   .modal-overlay {
     position: fixed;
@@ -119,7 +123,7 @@
     width: 400px;
   }
   .recording-pulse {
-      background-color: #dc2626; /* red-600 */
+      background-color: #dc2626;
       animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
   @keyframes pulse {
@@ -138,7 +142,7 @@
       <span>⚾</span> Baseball Soundboard Pro
     </h1>
       <div class="flex items-center gap-2 text-sm text-gray-400">
-    Like this app? Buy me a coffee!
+    Like this app?
     <a href="https://www.paypal.me/mattswymer84" target="_blank" title="PayPal">
       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/PayPal_2024_%28Icon%29.svg/250px-PayPal_2024_%28Icon%29.svg.png" alt="PayPal" class="h-6 w-auto" />
     </a>
@@ -157,7 +161,7 @@
         <input id="fadeOutSlider" type="range" min="0" max="8" step="0.1" value="2.0" class="w-24 md:w-40" />
         <span id="fadeOutVal" class="w-8 text-right">2.0</span>
       </div>
-      <button id="fadeAll" class="bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-2 rounded-xl font-semibold shadow">Fade Out All</button>
+      <button id="fadeAll" class="bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-2 rounded-xl font-semibold shadow transition-transform active:scale-95">Fade Out All</button>
     </div>
   </header>
 
@@ -180,10 +184,10 @@
             <option value="">Loading voices...</option>
           </select>
           <div class="flex gap-2 shrink-0">
-            <button id="previewBtn" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-3 py-2 rounded-xl text-sm font-semibold shadow transition-colors whitespace-nowrap">
+            <button id="previewBtn" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-3 py-2 rounded-xl text-sm font-semibold shadow transition-colors whitespace-nowrap active:scale-95">
               🔊 Preview
             </button>
-            <button id="generateBtn" class="bg-green-600 hover:bg-green-500 active:bg-green-700 px-3 py-2 rounded-xl text-sm font-semibold shadow transition-colors whitespace-nowrap">
+            <button id="generateBtn" class="bg-green-600 hover:bg-green-500 active:bg-green-700 px-3 py-2 rounded-xl text-sm font-semibold shadow transition-colors whitespace-nowrap active:scale-95">
               ➕ Add
             </button>
           </div>
@@ -193,7 +197,7 @@
           <div class="relative">
             <button
               id="recordBtn"
-              class="w-14 h-14 bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 rounded-full flex items-center justify-center text-xl transition-all duration-200 select-none"
+              class="w-14 h-14 bg-slate-700 hover:bg-slate-600 border-2 border-slate-600 rounded-full flex items-center justify-center text-xl transition-all duration-200 select-none active:scale-95"
               title="Hold to record"
             >
               🎙️
@@ -214,10 +218,10 @@
         <span id="annCount" class="text-xs bg-slate-700 px-2 py-0.5 rounded">0</span>
       </div>
       <div id="annCol"
-           class="drop-zone group relative p-4 min-h-[260px] border-2 border-dashed border-slate-700 rounded-2xl bg-slate-800/30"
+           class="drop-zone relative p-4 min-h-[260px] border-2 border-dashed border-slate-700 rounded-2xl bg-slate-800/30"
            aria-labelledby="annDropText">
         <label for="annInput" class="sr-only">Add announcement sounds</label>
-        <div id="annDropText" class="drop-area pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-slate-400 group-[.has-items]:hidden">
+        <div id="annDropText" class="drop-area pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-slate-400">
           <div class="text-3xl">＋</div>
           <div>Drop sounds here or click to import</div>
         </div>
@@ -231,10 +235,10 @@
         <span id="musicCount" class="text-xs bg-slate-700 px-2 py-0.5 rounded">0</span>
       </div>
       <div id="musicCol"
-           class="drop-zone group relative p-4 min-h-[260px] border-2 border-dashed border-slate-700 rounded-2xl bg-slate-800/30"
+           class="drop-zone relative p-4 min-h-[260px] border-2 border-dashed border-slate-700 rounded-2xl bg-slate-800/30"
            aria-labelledby="musicDropText">
         <label for="musicInput" class="sr-only">Add music sounds</label>
-        <div id="musicDropText" class="drop-area pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-slate-400 group-[.has-items]:hidden">
+        <div id="musicDropText" class="drop-area pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-slate-400">
           <div class="text-3xl">＋</div>
           <div>Drop sounds here or click to import</div>
         </div>
@@ -248,7 +252,7 @@
       <h3 class="text-xl font-bold mb-4">Message</h3>
       <p id="modal-message"></p>
       <div class="mt-4 text-right">
-        <button id="modal-close" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-2 rounded-xl font-semibold shadow">OK</button>
+        <button id="modal-close" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-2 rounded-xl font-semibold shadow active:scale-95">OK</button>
       </div>
     </div>
   </div>
@@ -341,6 +345,7 @@ let isRecording = false;
 let microphoneStream = null;
 let hasMicPermission = false;
 let activeUtterances = new Set();
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 // ===== UI & Event Handling =====
 function setHasItemsClass(col) {
@@ -369,9 +374,9 @@ function makeToggle(labelText) {
 }
 
 // Refactored Card builder for both audio files and TTS announcements
-function createCard({ name, url, blob, idbKey, text, voiceName }) {
+async function createCard({ name, url, blob, idbKey, text, voiceName }) {
   const card = document.createElement('div');
-  card.idbKey = idbKey || null;
+  card.dataset.idbKey = idbKey || null;
   card.className = 'sound-card group/card bg-slate-800 border border-slate-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-2 cursor-grab';
   card.draggable = true;
   card.dataset.type = text ? 'tts' : 'audio';
@@ -385,12 +390,12 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
   dragDot.textContent = '⋮⋮';
 
   const playBtn = document.createElement('button');
-  playBtn.className = 'btn-playpause shrink-0';
+  playBtn.className = 'btn-playpause shrink-0 transition-transform active:scale-95';
   playBtn.setAttribute('aria-label', 'Play');
   playBtn.innerHTML = '▶';
 
   const stopBtn = document.createElement('button');
-  stopBtn.className = 'btn-stop shrink-0';
+  stopBtn.className = 'btn-stop shrink-0 transition-transform active:scale-95';
   stopBtn.setAttribute('aria-label', 'Stop');
   stopBtn.innerHTML = '⏹';
 
@@ -399,22 +404,22 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
   title.textContent = name;
 
   const editBtn = document.createElement('button');
-  editBtn.className = 'text-slate-300 hover:text-white';
+  editBtn.className = 'text-slate-300 hover:text-white transition-transform active:scale-95';
   editBtn.setAttribute('title', 'Rename');
   editBtn.innerHTML = '✎';
 
   const delBtn = document.createElement('button');
-  delBtn.className = 'text-slate-300 hover:text-red-400';
+  delBtn.className = 'text-slate-300 hover:text-red-400 transition-transform active:scale-95';
   delBtn.setAttribute('title', 'Delete');
   delBtn.innerHTML = '🗑';
 
   row.append(dragDot, playBtn, stopBtn, title, editBtn, delBtn);
 
   let isPlaying = false;
-  let audio, utterance;
-  
+  let sourceNode, gainNode;
+
   if (card.dataset.type === 'audio') {
-    // Logic for local audio files
+    // Logic for local audio files using Web Audio API
     const toggles = document.createElement('div');
     toggles.className = 'flex items-center gap-4 pl-14';
     const fadeInT = makeToggle('Fade In');
@@ -423,7 +428,7 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
     fadeOutT.input.checked = true;
     toggles.append(fadeInT.wrap, fadeOutT.wrap);
     card.appendChild(toggles);
-    
+
     const progressWrap = document.createElement('div');
     progressWrap.className = 'pl-14';
     progressWrap.innerHTML = `
@@ -438,81 +443,151 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
     const durLbl = progressWrap.querySelector('.dur');
     card.appendChild(progressWrap);
 
-    audio = new Audio();
-    if (url) {
-      audio.src = url;
-    } else if (blob) {
-      audio.src = URL.createObjectURL(blob);
+    card.audioBuffer = null;
+    if (blob) {
+      const arrayBuf = await blob.arrayBuffer();
+      card.audioBuffer = await audioCtx.decodeAudioData(arrayBuf);
+    } else if (url) {
+      const resp = await fetch(url);
+      const data = await resp.arrayBuffer();
+      card.audioBuffer = await audioCtx.decodeAudioData(data);
     }
-    audio.preload = 'metadata';
-    audio.crossOrigin = 'anonymous';
-    audio.volume = 1;
-    card.audioElement = audio;
 
-    const updateDuration = () => { durLbl.textContent = formatTime(audio.duration); };
-    audio.addEventListener('loadedmetadata', updateDuration);
-    if (audio.readyState >= 1) updateDuration();
+    if (card.audioBuffer) {
+        durLbl.textContent = formatTime(card.audioBuffer.duration);
+    }
 
-    audio.addEventListener('timeupdate', () => {
-      if (!isNaN(audio.duration) && audio.duration > 0) {
-        progress.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
-        curLbl.textContent = formatTime(audio.currentTime);
-      }
-    });
-    progressBg.addEventListener('click', (e) => {
-      if (!isNaN(audio.duration) && audio.duration > 0) {
-        const rect = progressBg.getBoundingClientRect();
-        audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
-      }
-    });
-    audio.addEventListener('ended', () => {
-      isPlaying = false;
-      setActive(false);
-      progress.style.width = '0%';
-      curLbl.textContent = '0:00';
-      activeAudios.delete(audio);
-    });
+    let startTime = 0;
+    let pausedAt = 0;
+    let updateProgressLoop;
 
-    playBtn.addEventListener('click', () => {
-      if (!isPlaying) {
-        if (fadeInT.input.checked) audio.volume = 0;
-        audio.play();
+    function playAudio() {
+        if (!card.audioBuffer) return;
+        sourceNode = audioCtx.createBufferSource();
+        sourceNode.buffer = card.audioBuffer;
+
+        gainNode = audioCtx.createGain();
+        sourceNode.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        sourceNode.onended = () => {
+            isPlaying = false;
+            setActive(false);
+            progress.style.width = '0%';
+            curLbl.textContent = '0:00';
+            activeAudios.delete(card);
+            sourceNode = null;
+            pausedAt = 0;
+            cancelAnimationFrame(updateProgressLoop);
+        };
+
+        const offset = pausedAt % card.audioBuffer.duration;
+        sourceNode.start(0, offset);
+        startTime = audioCtx.currentTime - offset;
+
+        if (fadeInT.input.checked) {
+            gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(1, audioCtx.currentTime + fadeInTime);
+        } else {
+            gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        }
+
         isPlaying = true;
         setActive(true);
-        activeAudios.add(audio);
-        if (fadeInT.input.checked) fadeTo(audio, 1, Math.round(fadeInTime * 1000));
-        else audio.volume = 1;
-      } else {
+        activeAudios.add(card);
+        updateProgress();
+    }
+
+    function stopAudio() {
+        if (!sourceNode) return;
+
         if (fadeOutT.input.checked) {
-          fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
-            stopAfter: true, reset: false, onDone: () => { isPlaying = false; setActive(false); activeAudios.delete(audio); }
-          });
+            const currentVolume = gainNode.gain.value;
+            gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(currentVolume, audioCtx.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + fadeOutTime);
+            sourceNode.onended = null;
+            sourceNode.stop(audioCtx.currentTime + fadeOutTime);
+
+            setTimeout(() => {
+                isPlaying = false;
+                setActive(false);
+                activeAudios.delete(card);
+                pausedAt = 0;
+                progress.style.width = '0%';
+                curLbl.textContent = '0:00';
+                sourceNode = null;
+                cancelAnimationFrame(updateProgressLoop);
+            }, fadeOutTime * 1000);
+
         } else {
-          audio.pause();
-          isPlaying = false;
-          setActive(false);
-          activeAudios.delete(audio);
+            sourceNode.stop();
+            isPlaying = false;
+            setActive(false);
+            activeAudios.delete(card);
+            pausedAt = 0;
+            progress.style.width = '0%';
+            curLbl.textContent = '0:00';
+            sourceNode = null;
+            cancelAnimationFrame(updateProgressLoop);
+        }
+    }
+
+    function updateProgress() {
+        if (!isPlaying || !card.audioBuffer) {
+            return;
+        }
+        const elapsed = audioCtx.currentTime - startTime;
+        pausedAt = elapsed;
+        if (elapsed <= card.audioBuffer.duration) {
+            progress.style.width = `${(elapsed / card.audioBuffer.duration) * 100}%`;
+            curLbl.textContent = formatTime(elapsed);
+            updateProgressLoop = requestAnimationFrame(updateProgress);
+        }
+    }
+
+    playBtn.addEventListener('click', () => {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (!isPlaying) {
+        playAudio();
+      } else {
+        if (sourceNode) {
+            pausedAt = audioCtx.currentTime - startTime;
+            sourceNode.onended = null;
+            sourceNode.stop();
+            isPlaying = false;
+            setActive(false);
+            activeAudios.delete(card);
+            cancelAnimationFrame(updateProgressLoop);
         }
       }
     });
+
     stopBtn.addEventListener('click', () => {
-      if (fadeOutT.input.checked && !audio.paused && audio.volume > 0) {
-        fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
-          stopAfter: true, reset: true, onDone: () => { isPlaying = false; setActive(false); activeAudios.delete(audio); }
-        });
-      } else {
-        audio.pause();
-        audio.currentTime = 0;
-        isPlaying = false;
-        setActive(false);
-        activeAudios.delete(audio);
+        stopAudio();
+    });
+
+    progressBg.addEventListener('click', (e) => {
+      if (card.audioBuffer && card.audioBuffer.duration > 0) {
+        const rect = progressBg.getBoundingClientRect();
+        const newTime = ((e.clientX - rect.left) / rect.width) * card.audioBuffer.duration;
+        if (isPlaying) {
+            stopAudio();
+            pausedAt = newTime;
+            playAudio();
+        } else {
+            curLbl.textContent = formatTime(newTime);
+            progress.style.width = `${(newTime / card.audioBuffer.duration) * 100}%`;
+            pausedAt = newTime;
+        }
       }
     });
+
   } else {
     // Logic for TTS cards
     card.dataset.text = text;
     card.dataset.voice = voiceName;
-    
+
     playBtn.addEventListener('click', () => {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
@@ -542,20 +617,26 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
     });
   }
 
-  delBtn.addEventListener('click', () => {
+  delBtn.addEventListener('click', async () => {
     if (!confirm('Delete this sound?')) return;
     try {
       if (card.dataset.type === 'audio') {
-        audio.pause();
-        activeAudios.delete(audio);
+        if (sourceNode) stopAudio();
       } else {
         if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
       }
     } catch {}
-    card.remove();
-    updateCounts();
-    if (card.idbKey) idbDelete(card.idbKey);
-    if (blob) URL.revokeObjectURL(audio.src);
+
+    const originalText = delBtn.innerHTML;
+    delBtn.innerHTML = '✔️';
+    delBtn.classList.add('text-red-400');
+    setTimeout(() => {
+      card.remove();
+      updateCounts();
+      if (card.dataset.idbKey) idbDelete(card.dataset.idbKey);
+      if (blob) URL.revokeObjectURL(url);
+    }, 500);
+
   });
 
   function setActive(on) {
@@ -570,34 +651,24 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
     }
   }
 
-  function fadeTo(audio, target, durationMs, { stopAfter = false, reset = false, onDone } = {}) {
-    const start = audio.volume;
-    const startTime = performance.now();
-    const dur = Math.max(0, durationMs);
-    if (audio.__fadeRaf) cancelAnimationFrame(audio.__fadeRaf);
-    function step(t) {
-      const p = dur === 0 ? 1 : Math.min(1, (t - startTime) / dur);
-      audio.volume = start + (target - start) * p;
-      if (p < 1) {
-        audio.__fadeRaf = requestAnimationFrame(step);
-      } else {
-        if (stopAfter) { audio.pause(); if (reset) audio.currentTime = 0; }
-        if (onDone) onDone();
-      }
-    }
-    audio.__fadeRaf = requestAnimationFrame(step);
-  }
-
   editBtn.addEventListener('click', async () => {
     const currentName = title.textContent.trim();
     const newName = prompt('Rename sound', currentName);
     if (newName && newName.trim() && newName.trim() !== currentName) {
       title.textContent = newName.trim();
-      if (card.idbKey) {
-        const rec = await idbGet(card.idbKey);
+      if (card.dataset.idbKey) {
+        const rec = await idbGet(card.dataset.idbKey);
         if (rec) {
           rec.name = newName.trim();
-          await idbSet(card.idbKey, rec);
+          await idbSet(card.dataset.idbKey, rec);
+
+          const originalText = editBtn.innerHTML;
+          editBtn.innerHTML = '✔️';
+          editBtn.classList.add('text-green-400');
+          setTimeout(() => {
+            editBtn.innerHTML = originalText;
+            editBtn.classList.remove('text-green-400');
+          }, 800);
         }
       }
     }
@@ -612,25 +683,23 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
 }
 
 // Function to add files from a file system to a column
-function addFilesToColumn(files, columnEl) {
-  files.forEach(file => {
-    if ([...columnEl.querySelectorAll('.sound-card')].some(c => c.idbKey === file.name)) return;
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const arrayBuffer = e.target.result;
-      const col = columnEl.id === 'annCol' ? 'ann' : 'music';
-      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col });
-      const blob = new Blob([arrayBuffer], { type: file.type });
-      const card = createCard({
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        blob,
-        idbKey: file.name
-      });
-      columnEl.appendChild(card);
-      updateCounts();
-    };
-    reader.readAsArrayBuffer(file);
-  });
+async function addFilesToColumn(files, columnEl) {
+  for (const file of files) {
+    if ([...columnEl.querySelectorAll('.sound-card')].some(c => c.dataset.idbKey === file.name)) continue;
+
+    const arrayBuffer = await file.arrayBuffer();
+    const col = columnEl.id === 'annCol' ? 'ann' : 'music';
+    await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col });
+    const blob = new Blob([arrayBuffer], { type: file.type });
+
+    const card = await createCard({
+      name: file.name.replace(/\.[^/.]+$/, ''),
+      blob,
+      idbKey: file.name
+    });
+    columnEl.appendChild(card);
+    updateCounts();
+  }
 }
 
 // Function to restore saved sounds from IndexedDB
@@ -642,14 +711,14 @@ async function restoreFromDB() {
 
     if (rec.type === 'tts') {
       const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
-      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === key)) continue;
-      const card = createCard({ name: rec.name, text: rec.text, voiceName: rec.voiceName, idbKey: key });
+      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.dataset.idbKey === key)) continue;
+      const card = await createCard({ name: rec.name, text: rec.text, voiceName: rec.voiceName, idbKey: key });
       targetCol.appendChild(card);
     } else {
       const blob = new Blob([rec.buffer], { type: rec.type });
       const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
-      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === key)) continue;
-      const card = createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob, idbKey: key });
+      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.dataset.idbKey === key)) continue;
+      const card = await createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob, idbKey: key });
       targetCol.appendChild(card);
     }
   }
@@ -683,13 +752,12 @@ function generateBrowserTTS(text, voiceName, action) {
     }
   } else if (action === 'add') {
     const name = text;
-    const textKey = `tts_${name}_${voiceName}`;
-    const card = createCard({ name, text, voiceName, idbKey: textKey });
-    $('#annCol').appendChild(card);
-    updateCounts();
-
-    // Persist TTS cards to IndexedDB
-    idbSet(textKey, { name: text, text, voiceName, type: 'tts', col: 'ann' });
+    const textKey = `tts_${name}_${voiceName}_${Date.now()}`;
+    createCard({ name, text, voiceName, idbKey: textKey }).then(card => {
+        $('#annCol').appendChild(card);
+        updateCounts();
+        idbSet(textKey, { name: text, text, voiceName, type: 'tts', col: 'ann' });
+    });
   }
 }
 
@@ -725,7 +793,7 @@ function startRecording(stream) {
     const fileName = `Recording_${Date.now()}.${type.split('/')[1] || 'webm'}`;
     const arrayBuffer = await audioBlob.arrayBuffer();
     await idbSet(fileName, { name: fileName, buffer: arrayBuffer, type, col: 'ann' });
-    const card = createCard({ name: 'Recording ' + new Date().toLocaleTimeString(), blob: audioBlob, idbKey: fileName });
+    const card = await createCard({ name: 'Recording ' + new Date().toLocaleTimeString(), blob: audioBlob, idbKey: fileName });
     $('#annCol').appendChild(card);
     updateCounts();
   };
@@ -807,14 +875,30 @@ $('#fadeOutSlider').addEventListener('input', e => {
   $('#fadeOutVal').textContent = fadeOutTime.toFixed(1);
   saveSettingsLS({ fadeIn: fadeInTime, fadeOut: fadeOutTime });
 });
-$('#fadeAll').addEventListener('click', () => {
+$('#fadeAll').addEventListener('click', async () => {
+  const btn = $('#fadeAll');
+  if (btn.disabled) return;
+  if (activeAudios.size === 0) return;
+
+  btn.disabled = true;
+  const originalText = btn.textContent;
+  btn.textContent = 'Fading…';
+
   window.speechSynthesis.cancel();
-  $$('.sound-card').forEach(card => {
-    if (card.dataset.type === 'audio') {
-      const audio = card.audioElement;
-      if (audio && !audio.paused) card.querySelector('.btn-stop').click();
-    }
+
+  const fadePromises = [...activeAudios].map(card => {
+      return new Promise(resolve => {
+          // Use setTimeout here for demonstration as the onended callback is tricky to manage
+          // for a global fade-out without a larger refactor.
+          card.querySelector('.btn-stop').click();
+          setTimeout(resolve, fadeOutTime * 1000);
+      });
   });
+
+  await Promise.all(fadePromises);
+
+  btn.textContent = originalText;
+  btn.disabled = false;
 });
 columns.forEach(({ wrap, input }) => {
   wrap.addEventListener('click', (e) => {
@@ -848,18 +932,18 @@ columns.forEach(({ wrap, input }) => {
     wrap.classList.remove('ring-2', 'ring-sky-500', 'drag-over');
     const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('audio/'));
     if (files.length) {
-      addFilesToColumn(files, wrap);
+      await addFilesToColumn(files, wrap);
     } else {
       const dragging = $('.dragging');
       if (dragging && dragging.parentElement !== wrap) {
         wrap.appendChild(dragging);
         updateCounts();
-        if (dragging.idbKey) {
+        if (dragging.dataset.idbKey) {
             const newCol = wrap.id === 'annCol' ? 'ann' : 'music';
-            const rec = await idbGet(dragging.idbKey);
+            const rec = await idbGet(dragging.dataset.idbKey);
             if (rec) {
                 rec.col = newCol;
-                await idbSet(dragging.idbKey, rec);
+                await idbSet(dragging.dataset.idbKey, rec);
             }
         }
       }
@@ -890,6 +974,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   $('#fadeInVal').textContent = fadeInTime.toFixed(1);
   $('#fadeOutVal').textContent = fadeOutTime.toFixed(1);
   await restoreFromDB();
+  if (audioCtx.state === 'suspended') {
+      document.body.addEventListener('click', () => {
+          if (audioCtx.state === 'suspended') {
+              audioCtx.resume();
+          }
+      }, { once: true });
+  }
 });
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js');
