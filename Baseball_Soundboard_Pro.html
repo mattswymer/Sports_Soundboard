@@ -107,12 +107,12 @@
     </h1>
     <div class="flex flex-wrap items-center gap-6">
       <div class="flex items-center gap-3">
-        <div class="text-sm shrink-0">Fade In (s)</div>
+        <label for="fadeInSlider" class="text-sm shrink-0">Fade In (s)</label>
         <input id="fadeInSlider" type="range" min="0" max="8" step="0.1" value="2.0" class="w-24 md:w-40" />
         <span id="fadeInVal" class="w-8 text-right">2.0</span>
       </div>
       <div class="flex items-center gap-3">
-        <div class="text-sm shrink-0">Fade Out (s)</div>
+        <label for="fadeOutSlider" class="text-sm shrink-0">Fade Out (s)</label>
         <input id="fadeOutSlider" type="range" min="0" max="8" step="0.1" value="2.0" class="w-24 md:w-40" />
         <span id="fadeOutVal" class="w-8 text-right">2.0</span>
       </div>
@@ -121,7 +121,6 @@
   </header>
 
   <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Announcements Column -->
     <section>
       <div class="flex items-center gap-2 text-lg font-semibold mb-2">
         <span>📢 Announcements</span>
@@ -137,7 +136,6 @@
       <input id="annInput" type="file" accept="audio/*" multiple class="hidden" />
     </section>
 
-    <!-- Music Column -->
     <section>
       <div class="flex items-center gap-2 text-lg font-semibold mb-2">
         <span>🎵 Music</span>
@@ -211,13 +209,14 @@ function fadeTo(audio, target, durationMs, { stopAfter = false, reset = false, o
 }
 
 // ===== Card builder =====
-function makeToggle(labelText) {
+function makeToggle(labelText, id) {
   const wrap = document.createElement('label');
   wrap.className = 'flex items-center gap-2 text-xs select-none';
+  wrap.setAttribute('for', id);
   wrap.innerHTML = `
     <span>${labelText}</span>
     <span class="toggle inline-block">
-      <input type="checkbox" />
+      <input type="checkbox" id="${id}" />
       <span class="track"><span class="thumb"></span></span>
     </span>`;
   return { wrap, input: wrap.querySelector('input') };
@@ -266,8 +265,8 @@ function createCard({ name, url }) {
   // Toggles
   const toggles = document.createElement('div');
   toggles.className = 'flex items-center gap-4 pl-14';
-  const fadeInT = makeToggle('Fade In');
-  const fadeOutT = makeToggle('Fade Out');
+  const fadeInT = makeToggle('Fade In', `fadeInToggle-${Date.now()}-${Math.random()}`);
+  const fadeOutT = makeToggle('Fade Out', `fadeOutToggle-${Date.now()}-${Math.random()}`);
   fadeInT.input.checked = true;
   fadeOutT.input.checked = true;
   toggles.append(fadeInT.wrap, fadeOutT.wrap);
@@ -470,7 +469,7 @@ columns.forEach(({ wrap, input }) => {
   wrap.addEventListener('drop', (e) => {
     e.preventDefault();
     wrap.classList.remove('ring-2', 'ring-sky-500', 'drag-over');
-    
+
     const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('audio/'));
     if (files.length) {
       addFilesToColumn(files, wrap);
@@ -508,11 +507,11 @@ columns.forEach(({ wrap, input }) => {
 
 function getDragAfterElement(container, y) {
   const draggableElements = [...container.querySelectorAll('.sound-card:not(.dragging)')];
-  
+
   return draggableElements.reduce((closest, child) => {
     const box = child.getBoundingClientRect();
     const offset = y - box.top - box.height / 2;
-    
+
     if (offset < 0 && offset > closest.offset) {
       return { offset: offset, element: child };
     } else {
@@ -540,7 +539,7 @@ function addFilesToColumn(files, columnEl) {
 $('#fadeAll').addEventListener('click', () => {
   // Get all sound cards that are currently playing
   const allCards = document.querySelectorAll('.sound-card');
-  
+
   allCards.forEach(card => {
     const audio = card.audioElement;
     if (audio && !audio.paused) {
