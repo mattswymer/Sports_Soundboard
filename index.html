@@ -284,6 +284,14 @@ function idbGetAllKeys() {
     req.onerror = (e) => reject(e);
   }));
 }
+function idbDelete(key) {
+  return openDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  }));
+}
 
 /* LocalStorage for slider/toggle/fade settings */
 const SETTINGS_KEY = 'sb_settings_v1';
@@ -298,12 +306,19 @@ function loadSettingsLS() {
 const origAddFilesToColumn = addFilesToColumn;
 addFilesToColumn = function(files, columnEl) {
   files.forEach(file => {
+    if ([...columnEl.querySelectorAll('.sound-card')].some(c => c.idbKey === file.name)) return;
+
     const reader = new FileReader();
     reader.onload = async (e) => {
       const arrayBuffer = e.target.result;
-      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type });
+      const col = columnEl.id === 'annCol' ? 'ann' : 'music'; // NEW
+      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col }); // NEW
       const blob = new Blob([arrayBuffer], { type: file.type });
-      const card = createCard({ name: file.name.replace(/\.[^/.]+$/, ''), blob });
+      const card = createCard({
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        blob,
+        idbKey: file.name
+      });
       columnEl.appendChild(card);
       updateCounts();
     };
@@ -318,16 +333,23 @@ async function restoreFromDB() {
     const rec = await idbGet(key);
     if (!rec) continue;
     const blob = new Blob([rec.buffer], { type: rec.type });
-    const card = createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob });
-    if (/ann/i.test(rec.name)) {
-      document.getElementById('annCol').appendChild(card);
-    } else {
-      document.getElementById('musicCol').appendChild(card);
-    }
+
+    const targetCol =
+      rec.col === 'ann' ? $('#annCol') :
+      rec.col === 'music' ? $('#musicCol') :
+      (/ann/i.test(rec.name) ? $('#annCol') : $('#musicCol'));
+
+    if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === rec.name)) continue;
+
+    const card = createCard({
+      name: rec.name.replace(/\.[^/.]+$/, ''),
+      blob,
+      idbKey: rec.name
+    });
+    targetCol.appendChild(card);
   }
   updateCounts();
 }
-
 /* Save slider values automatically */
 function hookSettings() {
   const fadeInSlider = document.getElementById('fadeInSlider');
@@ -514,8 +536,9 @@ function makeToggle(labelText) {
   return { wrap, input: wrap.querySelector('input') };
 }
 
-function createCard({ name, url, blob }) {
+function createCard({ name, url, blob, idbKey }) {
   const card = document.createElement('div');
+  card.idbKey = idbKey || null;
   card.className = 'sound-card group/card bg-slate-800 border border-slate-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-2 cursor-grab';
   card.draggable = true;
 
@@ -582,14 +605,24 @@ function createCard({ name, url, blob }) {
   // Audio element
   const audio = new Audio();
   if (url) {
-      audio.src = url;
+    audio.src = url;
   } else if (blob) {
-      audio.src = URL.createObjectURL(blob);
+    audio.src = URL.createObjectURL(blob);
   }
   audio.preload = 'metadata';
   audio.crossOrigin = 'anonymous';
   audio.volume = 1;
-  card.audioElement = audio; // Custom property to link audio to card
+  card.audioElement = audio;
+
+  // Single delete handler with confirm
+  delBtn.addEventListener('click', () => {
+    if (!confirm('Delete this sound?')) return;
+    try { audio.pause(); activeAudios.delete(audio); } catch {}
+    card.remove();
+    updateCounts();
+    if (card.idbKey) idbDelete(card.idbKey);
+    if (blob) URL.revokeObjectURL(audio.src);
+  });
 
   let isPlaying = false;
 
@@ -703,19 +736,6 @@ function createCard({ name, url, blob }) {
     if (newName && newName.trim()) title.textContent = newName.trim();
   });
 
-  // Delete
-  delBtn.addEventListener('click', () => {
-    try {
-      audio.pause();
-      activeAudios.delete(audio);
-    } catch (e) {}
-    card.remove();
-    updateCounts();
-    // Clean up object URL if it was a blob
-    if (blob) {
-      URL.revokeObjectURL(audio.src);
-    }
-  });
 
   // Drag handle
   card.addEventListener('dragstart', (e) => {
@@ -820,15 +840,6 @@ function getDragAfterElement(container, y) {
   }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-function addFilesToColumn(files, columnEl) {
-  files.forEach(file => {
-    const url = URL.createObjectURL(file);
-    const card = createCard({ name: file.name.replace(/\.[^/.]+$/, ''), url });
-    columnEl.appendChild(card);
-  });
-  updateCounts();
-}
-
 // Move dragged cards between columns too
 ['annCol', 'musicCol'].forEach(id => {
   const col = document.getElementById(id);
@@ -866,16 +877,26 @@ async function generateTTS(text, voice, action) {
         showMessage("Please wait for the current audio generation to finish.");
         return;
     }
-
     if (!text) {
         showMessage("Please enter some text to generate audio.");
         return;
     }
 
+    // ✨ Early duplicate check for "add" requests
+    if (action === 'add') {
+        const fileName = `${text}.wav`;
+        if ([...$('#annCol').querySelectorAll('.sound-card')]
+              .some(c => c.idbKey === fileName)) {
+            showMessage('That announcement is already added.');
+            return; // Stop before generating
+        }
+    }
+
     isTtsGenerating = true;
+
     const originalPreviewText = $('#previewBtn').innerHTML;
     const originalGenerateText = $('#generateBtn').innerHTML;
-    const loadingText = '<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+    const loadingText = '<svg class="animate-spin h-5 w-5 text-white" ...></svg>';
 
     $('#previewBtn').innerHTML = loadingText;
     $('#generateBtn').innerHTML = loadingText;
@@ -887,76 +908,81 @@ async function generateTTS(text, voice, action) {
     const maxAttempts = 3;
     const initialDelay = 1000;
 
-    while(attempts < maxAttempts) {
-      try {
-          const payload = {
-              contents: [{
-                  parts: [{ text: `Say in a ${TTS_VOICES[voice]}: ${text}` }]
-              }],
-              generationConfig: {
-                  responseModalities: ["AUDIO"],
-                  speechConfig: {
-                      voiceConfig: {
-                          prebuiltVoiceConfig: { voiceName: voice }
-                      }
-                  }
-              },
-              model: "gemini-2.5-flash-preview-tts"
-          };
-          // NOTE: When running this file locally, the API key is not automatically provided.
-          // You will need to get your own API key and replace the empty string below.
-          const apiKey = "AIzaSyAFHL4g545yLj7-VkEiaBbWuzauxmd3K90";
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
+    while (attempts < maxAttempts) {
+        try {
+            const payload = {
+                contents: [{
+                    parts: [{ text: `Say in a ${TTS_VOICES[voice]}: ${text}` }]
+                }],
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: voice }
+                        }
+                    }
+                },
+                model: "gemini-2.5-flash-preview-tts"
+            };
 
-          const response = await fetch(apiUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload)
-          });
+            const apiKey = "YOUR_KEY_HERE";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
 
-          if (!response.ok) {
-            throw new Error(`API call failed: ${response.statusText}`);
-          }
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-          const result = await response.json();
-          const part = result?.candidates?.[0]?.content?.parts?.[0];
-          const audioData = part?.inlineData?.data;
-          const mimeType = part?.inlineData?.mimeType;
+            if (!response.ok) throw new Error(`API call failed: ${response.statusText}`);
 
-          if (audioData && mimeType && mimeType.startsWith("audio/")) {
-              const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
-              const pcmData = base64ToArrayBuffer(audioData);
-              const pcm16 = new Int16Array(pcmData);
-              const wavBlob = pcmToWav(pcm16, sampleRate);
+            const result = await response.json();
+            const part = result?.candidates?.[0]?.content?.parts?.[0];
+            const audioData = part?.inlineData?.data;
+            const mimeType = part?.inlineData?.mimeType;
 
-              if (action === 'preview') {
-                  if (ttsAudio) ttsAudio.pause();
-                  ttsAudio = new Audio(URL.createObjectURL(wavBlob));
-                  ttsAudio.addEventListener('ended', () => {
-                      ttsAudio = null;
-                      isTtsPlaying = false;
-                  });
-                  ttsAudio.play();
-                  isTtsPlaying = true;
-              } else if (action === 'add') {
-                  const card = createCard({ name: text, blob: wavBlob });
-                  $('#annCol').appendChild(card);
-                  updateCounts();
-              }
-              break; // Success, exit the retry loop
-          } else {
-              throw new Error("Invalid API response format");
-          }
-      } catch (e) {
-          console.error(`Attempt ${attempts + 1} failed:`, e);
-          attempts++;
-          if (attempts < maxAttempts) {
-              const delay = initialDelay * Math.pow(2, attempts - 1);
-              await new Promise(resolve => setTimeout(resolve, delay));
-          } else {
-              showMessage("Failed to generate audio after multiple attempts. Please try again later.");
-          }
-      }
+            if (audioData && mimeType && mimeType.startsWith("audio/")) {
+                const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
+                const pcmData = base64ToArrayBuffer(audioData);
+                const pcm16 = new Int16Array(pcmData);
+                const wavBlob = pcmToWav(pcm16, sampleRate);
+
+                if (action === 'preview') {
+                    if (ttsAudio) ttsAudio.pause();
+                    ttsAudio = new Audio(URL.createObjectURL(wavBlob));
+                    ttsAudio.addEventListener('ended', () => {
+                        ttsAudio = null;
+                        isTtsPlaying = false;
+                    });
+                    ttsAudio.play();
+                    isTtsPlaying = true;
+                } else if (action === 'add') {
+                    const fileName = `${text}.wav`;
+                    const arrayBuffer = await wavBlob.arrayBuffer();
+                    await idbSet(fileName, {
+                        name: fileName,
+                        buffer: arrayBuffer,
+                        type: wavBlob.type,
+                        col: 'ann'
+                    });
+                    const card = createCard({ name: text, blob: wavBlob, idbKey: fileName });
+                    $('#annCol').appendChild(card);
+                    updateCounts();
+                }
+                break;
+            } else {
+                throw new Error("Invalid API response format");
+            }
+        } catch (e) {
+            console.error(`Attempt ${attempts + 1} failed:`, e);
+            attempts++;
+            if (attempts < maxAttempts) {
+                const delay = initialDelay * Math.pow(2, attempts - 1);
+                await new Promise(res => setTimeout(res, delay));
+            } else {
+                showMessage("Failed to generate audio after multiple attempts. Please try again later.");
+            }
+        }
     }
 
     $('#previewBtn').innerHTML = originalPreviewText;
@@ -967,15 +993,11 @@ async function generateTTS(text, voice, action) {
 }
 
 $('#previewBtn').addEventListener('click', () => {
-    const text = $('#ttsText').value.trim();
-    const voice = $('#voiceSelect').value;
-    generateTTS(text, voice, 'preview');
+    generateTTS($('#ttsText').value.trim(), $('#voiceSelect').value, 'preview');
 });
 
 $('#generateBtn').addEventListener('click', () => {
-    const text = $('#ttsText').value.trim();
-    const voice = $('#voiceSelect').value;
-    generateTTS(text, voice, 'add');
+    generateTTS($('#ttsText').value.trim(), $('#voiceSelect').value, 'add');
 });
 
 // ===== Fixed Recording Functionality =====
@@ -1005,8 +1027,7 @@ function startRecording(stream) {
   if (isRecording || !stream) return;
   try {
     const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus'
-      : '';
+      ? 'audio/webm;codecs=opus' : '';
     mediaRecorder = mime
       ? new MediaRecorder(stream, { mimeType: mime })
       : new MediaRecorder(stream);
@@ -1019,12 +1040,20 @@ function startRecording(stream) {
   mediaRecorder.ondataavailable = e => {
     if (e.data && e.data.size > 0) audioChunks.push(e.data);
   };
-  mediaRecorder.onstop = () => {
+  mediaRecorder.onstop = async () => { // ✅ async for idbSet
     const type = audioChunks[0]?.type || 'audio/webm';
     const audioBlob = new Blob(audioChunks, { type });
-    const card = createCard({ name: 'Recording ' + new Date().toLocaleTimeString(), blob: audioBlob });
-    $('#annCol').appendChild(card);
-    updateCounts();
+    const fileName = `Recording_${Date.now()}.${type.split('/')[1] || 'webm'}`;
+    // ✅ Save to IndexedDB so it’s restored later
+const arrayBuffer = await audioBlob.arrayBuffer();
+await idbSet(fileName, { name: fileName, buffer: arrayBuffer, type, col: 'ann' }); // add col
+const card = createCard({
+  name: 'Recording ' + new Date().toLocaleTimeString(),
+  blob: audioBlob,
+  idbKey: fileName
+});
+$('#annCol').appendChild(card);
+updateCounts();
   };
   mediaRecorder.start();
   isRecording = true;
