@@ -137,6 +137,15 @@
     <h1 class="text-3xl font-bold flex items-center gap-3">
       <span>⚾</span> Baseball Soundboard Pro
     </h1>
+      <div class="flex items-center gap-2 text-sm text-gray-400">
+    Like this app? Buy me a coffee!
+    <a href="https://www.paypal.me/mattswymer84" target="_blank" title="PayPal">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/PayPal_2024_%28Icon%29.svg/250px-PayPal_2024_%28Icon%29.svg.png" alt="PayPal" class="h-6 w-auto" />
+    </a>
+    <a href="https://venmo.com/mattswymer" target="_blank" title="Venmo">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/1200px-Venmo_logo.png" alt="Venmo" class="h-6 w-auto" />
+    </a>
+  </div>
     <div class="flex flex-wrap items-center gap-6">
       <div class="flex items-center gap-3">
         <label for="fadeInSlider" class="text-sm shrink-0">Fade In (s)</label>
@@ -244,151 +253,7 @@
     </div>
   </div>
 <script>
-/* ==================== NEW STORAGE + RESTORE LAYER ==================== */
-/* IndexedDB setup */
-const DB_NAME = 'soundboardDB';
-const DB_VERSION = 1;
-const STORE_NAME = 'sounds';
-
-function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      e.target.result.createObjectStore(STORE_NAME);
-    };
-    req.onsuccess = (e) => resolve(e.target.result);
-    req.onerror = (e) => reject(e);
-  });
-}
-function idbSet(key, value) {
-  return openDB().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(value, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e);
-  }));
-}
-function idbGet(key) {
-  return openDB().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).get(key);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e);
-  }));
-}
-function idbGetAllKeys() {
-  return openDB().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly');
-    const req = tx.objectStore(STORE_NAME).getAllKeys();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e);
-  }));
-}
-function idbDelete(key) {
-  return openDB().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).delete(key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e);
-  }));
-}
-
-/* LocalStorage for slider/toggle/fade settings */
-const SETTINGS_KEY = 'sb_settings_v1';
-function saveSettingsLS(data) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
-}
-function loadSettingsLS() {
-  return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-}
-
-/* Override file‑adding logic so we also save to IndexedDB */
-const origAddFilesToColumn = addFilesToColumn;
-addFilesToColumn = function(files, columnEl) {
-  files.forEach(file => {
-    if ([...columnEl.querySelectorAll('.sound-card')].some(c => c.idbKey === file.name)) return;
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const arrayBuffer = e.target.result;
-      const col = columnEl.id === 'annCol' ? 'ann' : 'music'; // NEW
-      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col }); // NEW
-      const blob = new Blob([arrayBuffer], { type: file.type });
-      const card = createCard({
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        blob,
-        idbKey: file.name
-      });
-      columnEl.appendChild(card);
-      updateCounts();
-    };
-    reader.readAsArrayBuffer(file);
-  });
-};
-
-/* Restore saved audio on load */
-async function restoreFromDB() {
-  const keys = await idbGetAllKeys();
-  for (const key of keys) {
-    const rec = await idbGet(key);
-    if (!rec) continue;
-    const blob = new Blob([rec.buffer], { type: rec.type });
-
-    const targetCol =
-      rec.col === 'ann' ? $('#annCol') :
-      rec.col === 'music' ? $('#musicCol') :
-      (/ann/i.test(rec.name) ? $('#annCol') : $('#musicCol'));
-
-    if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === rec.name)) continue;
-
-    const card = createCard({
-      name: rec.name.replace(/\.[^/.]+$/, ''),
-      blob,
-      idbKey: rec.name
-    });
-    targetCol.appendChild(card);
-  }
-  updateCounts();
-}
-/* Save slider values automatically */
-function hookSettings() {
-  const fadeInSlider = document.getElementById('fadeInSlider');
-  const fadeOutSlider = document.getElementById('fadeOutSlider');
-  const saveFn = () => saveSettingsLS({
-    fadeIn: fadeInSlider.value,
-    fadeOut: fadeOutSlider.value
-  });
-  fadeInSlider.addEventListener('input', saveFn);
-  fadeOutSlider.addEventListener('input', saveFn);
-}
-function applySavedSettings() {
-  const s = loadSettingsLS();
-  if (s.fadeIn) {
-    document.getElementById('fadeInSlider').value = s.fadeIn;
-    fadeInTime = parseFloat(s.fadeIn);
-    document.getElementById('fadeInVal').textContent = fadeInTime.toFixed(1);
-  }
-  if (s.fadeOut) {
-    document.getElementById('fadeOutSlider').value = s.fadeOut;
-    fadeOutTime = parseFloat(s.fadeOut);
-    document.getElementById('fadeOutVal').textContent = fadeOutTime.toFixed(1);
-  }
-}
-
-/* Register Service Worker for offline caching */
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./service-worker.js');
-}
-
-/* Init on load */
-window.addEventListener('DOMContentLoaded', async () => {
-  applySavedSettings();
-  hookSettings();
-  await restoreFromDB();
-});
-/* ==================== END STORAGE + RESTORE LAYER ==================== */
-
-// ===== Utilities =====
+// ===== Utility Functions =====
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
 const formatTime = (sec) => {
@@ -406,124 +271,91 @@ const showMessage = (message) => {
   };
 };
 
+// ===== IndexedDB & LocalStorage Management =====
+const DB_NAME = 'soundboardDB';
+const DB_VERSION = 1;
+const STORE_NAME = 'sounds';
+const SETTINGS_KEY = 'sb_settings_v1';
+
+async function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore(STORE_NAME);
+    };
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e);
+  });
+}
+async function idbSet(key, value) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  });
+}
+async function idbGet(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e);
+  });
+}
+async function idbGetAllKeys() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const req = tx.objectStore(STORE_NAME).getAllKeys();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e);
+  });
+}
+async function idbDelete(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  });
+}
+function saveSettingsLS(data) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+}
+function loadSettingsLS() {
+  return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+}
+
+// ===== State Variables =====
 let fadeInTime = 2.0;
 let fadeOutTime = 2.0;
-$('#fadeInSlider').addEventListener('input', e => { fadeInTime = parseFloat(e.target.value); $('#fadeInVal').textContent = fadeInTime.toFixed(1); });
-$('#fadeOutSlider').addEventListener('input', e => { fadeOutTime = parseFloat(e.target.value); $('#fadeOutVal').textContent = fadeOutTime.toFixed(1); });
-$('#fadeInVal').textContent = fadeInTime.toFixed(1);
-$('#fadeOutVal').textContent = fadeOutTime.toFixed(1);
-
 const columns = [{ wrap: $('#annCol'), input: $('#annInput') }, { wrap: $('#musicCol'), input: $('#musicInput') }];
-const activeAudios = new Set(); // Keep track of all playing audios
-let ttsAudio = null; // Store the currently playing TTS audio element
+const activeAudios = new Set();
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+let microphoneStream = null;
+let hasMicPermission = false;
+let activeUtterances = new Set();
 
-const TTS_VOICES = {
-    'Zephyr': 'Bright', 'Puck': 'Upbeat', 'Charon': 'Informative', 'Kore': 'Firm',
-    'Fenrir': 'Excitable', 'Leda': 'Youthful', 'Orus': 'Firm', 'Aoede': 'Breezy',
-    'Callirrhoe': 'Easy-going', 'Autonoe': 'Bright', 'Enceladus': 'Breathy',
-    'Iapetus': 'Clear', 'Umbriel': 'Easy-going', 'Algieba': 'Smooth',
-    'Despina': 'Smooth', 'Erinome': 'Clear', 'Algenib': 'Gravelly',
-    'Rasalgethi': 'Informative', 'Laomedeia': 'Upbeat', 'Achernar': 'Soft',
-    'Alnilam': 'Firm', 'Schedar': 'Even', 'Gacrux': 'Mature',
-    'Pulcherrima': 'Forward', 'Achird': 'Friendly', 'Zubenelgenubi': 'Casual',
-    'Vindemiatrix': 'Gentle', 'Sadachbia': 'Lively', 'Sadaltager': 'Knowledgeable',
-    'Sulafat': 'Warm'
-};
-
-const voiceSelect = $('#voiceSelect');
-// Populate the voice selection dropdown
-for (const [name, description] of Object.entries(TTS_VOICES)) {
-    const option = document.createElement('option');
-    option.value = name;
-    option.textContent = `${name} (${description})`;
-    voiceSelect.appendChild(option);
-}
-
+// ===== UI & Event Handling =====
 function setHasItemsClass(col) {
-  if (col.children.length > 1) col.classList.add('has-items'); // > 1 because drop-area div is always there
-  else col.classList.remove('has-items');
+  if (col.querySelectorAll('.sound-card').length > 0) {
+    col.classList.add('has-items');
+  } else {
+    col.classList.remove('has-items');
+  }
 }
-
 function updateCounts() {
   $('#annCount').textContent = $('#annCol').querySelectorAll('.sound-card').length;
   $('#musicCount').textContent = $('#musicCol').querySelectorAll('.sound-card').length;
   columns.forEach(c => setHasItemsClass(c.wrap));
 }
 
-// ===== Fade helper using rAF =====
-function fadeTo(audio, target, durationMs, { stopAfter = false, reset = false, onDone } = {}) {
-  const start = audio.volume;
-  const startTime = performance.now();
-  const dur = Math.max(0, durationMs);
-  if (audio.__fadeRaf) cancelAnimationFrame(audio.__fadeRaf);
-
-  function step(t) {
-    const p = dur === 0 ? 1 : Math.min(1, (t - startTime) / dur);
-    const v = start + (target - start) * p;
-    audio.volume = Math.min(1, Math.max(0, v));
-    if (p < 1) {
-      audio.__fadeRaf = requestAnimationFrame(step);
-    } else {
-      if (stopAfter) {
-        audio.pause();
-        if (reset) audio.currentTime = 0;
-      }
-      if (onDone) onDone();
-    }
-  }
-  audio.__fadeRaf = requestAnimationFrame(step);
-}
-
-// Helper to convert base64 PCM to WAV Blob
-const pcmToWav = (pcmData, sampleRate) => {
-    const blob = new Blob([pcmData], { type: 'audio/L16' });
-    const buffer = new DataView(new ArrayBuffer(44 + pcmData.byteLength));
-
-    let offset = 0;
-    const writeString = (str) => {
-        for (let i = 0; i < str.length; i++) {
-            buffer.setUint8(offset++, str.charCodeAt(i));
-        }
-    };
-    const writeUint32 = (val) => {
-        buffer.setUint32(offset, val, true);
-        offset += 4;
-    };
-    const writeUint16 = (val) => {
-        buffer.setUint16(offset, val, true);
-        offset += 2;
-    };
-
-    writeString('RIFF');
-    writeUint32(36 + pcmData.byteLength);
-    writeString('WAVE');
-    writeString('fmt ');
-    writeUint32(16);
-    writeUint16(1); // AudioFormat: 1 = PCM
-    writeUint16(1); // NumChannels: 1
-    writeUint32(sampleRate);
-    writeUint32(sampleRate * 2); // ByteRate: sampleRate * numChannels * bitsPerSample/8
-    writeUint16(2); // BlockAlign: numChannels * bitsPerSample/8
-    writeUint16(16); // BitsPerSample: 16
-    writeString('data');
-    writeUint32(pcmData.byteLength);
-
-    new Uint8Array(buffer.buffer, 44).set(new Uint8Array(pcmData.buffer));
-
-    return new Blob([buffer], { type: 'audio/wav' });
-};
-
-const base64ToArrayBuffer = (base64) => {
-    const binaryString = atob(base64);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes.buffer;
-};
-
-// ===== Card builder =====
 function makeToggle(labelText) {
   const wrap = document.createElement('label');
   wrap.className = 'flex items-center gap-2 text-xs select-none';
@@ -536,17 +368,18 @@ function makeToggle(labelText) {
   return { wrap, input: wrap.querySelector('input') };
 }
 
-function createCard({ name, url, blob, idbKey }) {
+// Refactored Card builder for both audio files and TTS announcements
+function createCard({ name, url, blob, idbKey, text, voiceName }) {
   const card = document.createElement('div');
   card.idbKey = idbKey || null;
   card.className = 'sound-card group/card bg-slate-800 border border-slate-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-2 cursor-grab';
   card.draggable = true;
+  card.dataset.type = text ? 'tts' : 'audio';
 
   const row = document.createElement('div');
   row.className = 'flex items-center gap-3';
   card.appendChild(row);
 
-  // Controls
   const dragDot = document.createElement('div');
   dragDot.className = 'text-slate-500 cursor-grab select-none';
   dragDot.textContent = '⋮⋮';
@@ -577,56 +410,154 @@ function createCard({ name, url, blob, idbKey }) {
 
   row.append(dragDot, playBtn, stopBtn, title, editBtn, delBtn);
 
-  // Toggles
-  const toggles = document.createElement('div');
-  toggles.className = 'flex items-center gap-4 pl-14';
-  const fadeInT = makeToggle('Fade In');
-  const fadeOutT = makeToggle('Fade Out');
-  fadeInT.input.checked = true;
-  fadeOutT.input.checked = true;
-  toggles.append(fadeInT.wrap, fadeOutT.wrap);
-  card.appendChild(toggles);
+  let isPlaying = false;
+  let audio, utterance;
 
-  // Progress
-  const progressWrap = document.createElement('div');
-  progressWrap.className = 'pl-14';
-  progressWrap.innerHTML = `
-    <div class="progress-bar-wrap"><div class="progress-bar"></div></div>
-    <div class="flex justify-between text-xs text-slate-300 mt-0.5">
-      <span class="cur">0:00</span>
-      <span class="dur">0:00</span>
-    </div>`;
-  const progressBg = progressWrap.querySelector('.progress-bar-wrap');
-  const progress = progressWrap.querySelector('.progress-bar');
-  const curLbl = progressWrap.querySelector('.cur');
-  const durLbl = progressWrap.querySelector('.dur');
-  card.appendChild(progressWrap);
+  if (card.dataset.type === 'audio') {
+    // Logic for local audio files
+    const toggles = document.createElement('div');
+    toggles.className = 'flex items-center gap-4 pl-14';
+    const fadeInT = makeToggle('Fade In');
+    const fadeOutT = makeToggle('Fade Out');
+    fadeInT.input.checked = true;
+    fadeOutT.input.checked = true;
+    toggles.append(fadeInT.wrap, fadeOutT.wrap);
+    card.appendChild(toggles);
 
-  // Audio element
-  const audio = new Audio();
-  if (url) {
-    audio.src = url;
-  } else if (blob) {
-    audio.src = URL.createObjectURL(blob);
+    const progressWrap = document.createElement('div');
+    progressWrap.className = 'pl-14';
+    progressWrap.innerHTML = `
+      <div class="progress-bar-wrap"><div class="progress-bar"></div></div>
+      <div class="flex justify-between text-xs text-slate-300 mt-0.5">
+        <span class="cur">0:00</span>
+        <span class="dur">0:00</span>
+      </div>`;
+    const progressBg = progressWrap.querySelector('.progress-bar-wrap');
+    const progress = progressWrap.querySelector('.progress-bar');
+    const curLbl = progressWrap.querySelector('.cur');
+    const durLbl = progressWrap.querySelector('.dur');
+    card.appendChild(progressWrap);
+
+    audio = new Audio();
+    if (url) {
+      audio.src = url;
+    } else if (blob) {
+      audio.src = URL.createObjectURL(blob);
+    }
+    audio.preload = 'metadata';
+    audio.crossOrigin = 'anonymous';
+    audio.volume = 1;
+    card.audioElement = audio;
+
+    const updateDuration = () => { durLbl.textContent = formatTime(audio.duration); };
+    audio.addEventListener('loadedmetadata', updateDuration);
+    if (audio.readyState >= 1) updateDuration();
+
+    audio.addEventListener('timeupdate', () => {
+      if (!isNaN(audio.duration) && audio.duration > 0) {
+        progress.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+        curLbl.textContent = formatTime(audio.currentTime);
+      }
+    });
+    progressBg.addEventListener('click', (e) => {
+      if (!isNaN(audio.duration) && audio.duration > 0) {
+        const rect = progressBg.getBoundingClientRect();
+        audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+      }
+    });
+    audio.addEventListener('ended', () => {
+      isPlaying = false;
+      setActive(false);
+      progress.style.width = '0%';
+      curLbl.textContent = '0:00';
+      activeAudios.delete(audio);
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (!isPlaying) {
+        if (fadeInT.input.checked) audio.volume = 0;
+        audio.play();
+        isPlaying = true;
+        setActive(true);
+        activeAudios.add(audio);
+        if (fadeInT.input.checked) fadeTo(audio, 1, Math.round(fadeInTime * 1000));
+        else audio.volume = 1;
+      } else {
+        if (fadeOutT.input.checked) {
+          fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
+            stopAfter: true, reset: false, onDone: () => { isPlaying = false; setActive(false); activeAudios.delete(audio); }
+          });
+        } else {
+          audio.pause();
+          isPlaying = false;
+          setActive(false);
+          activeAudios.delete(audio);
+        }
+      }
+    });
+    stopBtn.addEventListener('click', () => {
+      if (fadeOutT.input.checked && !audio.paused && audio.volume > 0) {
+        fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
+          stopAfter: true, reset: true, onDone: () => { isPlaying = false; setActive(false); activeAudios.delete(audio); }
+        });
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+        isPlaying = false;
+        setActive(false);
+        activeAudios.delete(audio);
+      }
+    });
+  } else {
+    // Logic for TTS cards
+    card.dataset.text = text;
+    card.dataset.voice = voiceName;
+
+    playBtn.addEventListener('click', () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
+        window.speechSynthesis.speak(utterance);
+        isPlaying = true;
+        setActive(true);
+        activeUtterances.add(utterance);
+        utterance.onend = () => {
+          isPlaying = false;
+          setActive(false);
+          activeUtterances.delete(utterance);
+        };
+      } else {
+        showMessage("Browser TTS is not supported.");
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        isPlaying = false;
+        setActive(false);
+        activeUtterances.clear();
+      }
+    });
   }
-  audio.preload = 'metadata';
-  audio.crossOrigin = 'anonymous';
-  audio.volume = 1;
-  card.audioElement = audio;
 
-  // Single delete handler with confirm
   delBtn.addEventListener('click', () => {
     if (!confirm('Delete this sound?')) return;
-    try { audio.pause(); activeAudios.delete(audio); } catch {}
+    try {
+      if (card.dataset.type === 'audio') {
+        audio.pause();
+        activeAudios.delete(audio);
+      } else {
+        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+      }
+    } catch {}
     card.remove();
     updateCounts();
     if (card.idbKey) idbDelete(card.idbKey);
     if (blob) URL.revokeObjectURL(audio.src);
   });
 
-  let isPlaying = false;
-
-  // Visual active state
   function setActive(on) {
     if (on) {
       card.classList.add('ring-2', 'ring-blue-400', 'bg-slate-700');
@@ -639,376 +570,130 @@ function createCard({ name, url, blob, idbKey }) {
     }
   }
 
-  // Duration once known
-  audio.addEventListener('loadedmetadata', () => {
-    durLbl.textContent = formatTime(audio.duration);
-  });
-
-  // Progress updates
-  audio.addEventListener('timeupdate', () => {
-    if (!isNaN(audio.duration) && audio.duration > 0) {
-      const percentage = (audio.currentTime / audio.duration) * 100;
-      progress.style.width = `${percentage}%`;
-      curLbl.textContent = formatTime(audio.currentTime);
-    }
-  });
-
-  // Scrub
-  progressBg.addEventListener('click', (e) => {
-    if (!isNaN(audio.duration) && audio.duration > 0) {
-      const rect = progressBg.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const percentage = clickX / rect.width;
-      audio.currentTime = percentage * audio.duration;
-    }
-  });
-
-  // Ended
-  audio.addEventListener('ended', () => {
-    isPlaying = false;
-    setActive(false);
-    progress.style.width = '0%';
-    curLbl.textContent = '0:00';
-    activeAudios.delete(audio);
-  });
-
-  // Play/Pause logic with fades
-  playBtn.addEventListener('click', () => {
-    if (!isPlaying) {
-      // play
-      if (fadeInT.input.checked) {
-        audio.volume = 0;
-      }
-      audio.play();
-      isPlaying = true;
-      setActive(true);
-      activeAudios.add(audio);
-      if (fadeInT.input.checked) {
-        fadeTo(audio, 1, Math.round(fadeInTime * 1000));
+  function fadeTo(audio, target, durationMs, { stopAfter = false, reset = false, onDone } = {}) {
+    const start = audio.volume;
+    const startTime = performance.now();
+    const dur = Math.max(0, durationMs);
+    if (audio.__fadeRaf) cancelAnimationFrame(audio.__fadeRaf);
+    function step(t) {
+      const p = dur === 0 ? 1 : Math.min(1, (t - startTime) / dur);
+      audio.volume = start + (target - start) * p;
+      if (p < 1) {
+        audio.__fadeRaf = requestAnimationFrame(step);
       } else {
-        audio.volume = 1;
-      }
-    } else {
-      // pause
-      if (fadeOutT.input.checked) {
-        fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
-          stopAfter: true,
-          reset: false,
-          onDone: () => {
-            isPlaying = false;
-            setActive(false);
-            activeAudios.delete(audio);
-          }
-        });
-      } else {
-        audio.pause();
-        isPlaying = false;
-        setActive(false);
-        activeAudios.delete(audio);
+        if (stopAfter) { audio.pause(); if (reset) audio.currentTime = 0; }
+        if (onDone) onDone();
       }
     }
-  });
+    audio.__fadeRaf = requestAnimationFrame(step);
+  }
 
-  // Stop button
-  stopBtn.addEventListener('click', () => {
-    if (fadeOutT.input.checked && !audio.paused && audio.volume > 0) {
-      fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
-        stopAfter: true,
-        reset: true,
-        onDone: () => {
-          isPlaying = false;
-          setActive(false);
-          activeAudios.delete(audio);
+  editBtn.addEventListener('click', async () => {
+    const currentName = title.textContent.trim();
+    const newName = prompt('Rename sound', currentName);
+    if (newName && newName.trim() && newName.trim() !== currentName) {
+      title.textContent = newName.trim();
+      if (card.idbKey) {
+        const rec = await idbGet(card.idbKey);
+        if (rec) {
+          rec.name = newName.trim();
+          await idbSet(card.idbKey, rec);
         }
-      });
-    } else {
-      audio.pause();
-      audio.currentTime = 0;
-      isPlaying = false;
-      setActive(false);
-      activeAudios.delete(audio);
+      }
     }
   });
 
-  // Rename
-  editBtn.addEventListener('click', () => {
-    const newName = prompt('Rename sound', title.textContent.trim());
-    if (newName && newName.trim()) title.textContent = newName.trim();
-  });
-
-
-  // Drag handle
   card.addEventListener('dragstart', (e) => {
     card.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
   });
   card.addEventListener('dragend', () => card.classList.remove('dragging'));
-
   return card;
 }
 
-// ===== Column behaviors =====
-columns.forEach(({ wrap, input }) => {
-  // Click-to-import (only when clicking blank space, not on a card)
-  wrap.addEventListener('click', (e) => {
-    // Only trigger if clicking on the wrapper itself or the drop-area div
-    if (e.target === wrap || e.target.closest('.drop-area')) {
-      input.click();
-    }
+// Function to add files from a file system to a column
+function addFilesToColumn(files, columnEl) {
+  files.forEach(file => {
+    if ([...columnEl.querySelectorAll('.sound-card')].some(c => c.idbKey === file.name)) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const arrayBuffer = e.target.result;
+      const col = columnEl.id === 'annCol' ? 'ann' : 'music';
+      await idbSet(file.name, { name: file.name, buffer: arrayBuffer, type: file.type, col });
+      const blob = new Blob([arrayBuffer], { type: file.type });
+      const card = createCard({
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        blob,
+        idbKey: file.name
+      });
+      columnEl.appendChild(card);
+      updateCounts();
+    };
+    reader.readAsArrayBuffer(file);
   });
-
-  // Drag/drop import with visual feedback
-  wrap.addEventListener('dragenter', (e) => {
-    e.preventDefault();
-    const dragging = document.querySelector('.dragging');
-    if (!dragging) { // Only show drop zone feedback for external files
-      wrap.classList.add('drag-over');
-    }
-  });
-
-  wrap.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    const dragging = document.querySelector('.dragging');
-    if (dragging) {
-      // This is an internal card being dragged
-      wrap.classList.remove('drag-over');
-      wrap.classList.add('ring-2', 'ring-sky-500');
-    } else {
-      // This is likely a file from outside
-      wrap.classList.add('drag-over');
-    }
-  });
-
-  wrap.addEventListener('dragleave', (e) => {
-    // Only remove classes if we're actually leaving the wrapper
-    if (!wrap.contains(e.relatedTarget)) {
-      wrap.classList.remove('ring-2', 'ring-sky-500', 'drag-over');
-    }
-  });
-
-  wrap.addEventListener('drop', (e) => {
-    e.preventDefault();
-    wrap.classList.remove('ring-2', 'ring-sky-500', 'drag-over');
-
-    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('audio/'));
-    if (files.length) {
-      addFilesToColumn(files, wrap);
-    } else {
-      const dragging = document.querySelector('.dragging');
-      if (dragging && dragging.parentElement !== wrap) {
-        wrap.appendChild(dragging);
-        updateCounts();
-      }
-    }
-  });
-
-  // Reordering within column
-  wrap.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    const dragging = document.querySelector('.dragging');
-    if (!dragging) return;
-    const afterElement = getDragAfterElement(wrap, e.clientY);
-    if (afterElement == null) {
-      wrap.appendChild(dragging);
-    } else {
-      wrap.insertBefore(dragging, afterElement);
-    }
-  });
-
-  // File input for this column
-  input.addEventListener('change', (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length) {
-      addFilesToColumn(files, wrap);
-      input.value = '';
-    }
-  });
-});
-
-function getDragAfterElement(container, y) {
-  const draggableElements = [...container.querySelectorAll('.sound-card:not(.dragging)')];
-
-  return draggableElements.reduce((closest, child) => {
-    const box = child.getBoundingClientRect();
-    const offset = y - box.top - box.height / 2;
-
-    if (offset < 0 && offset > closest.offset) {
-      return { offset: offset, element: child };
-    } else {
-      return closest;
-    }
-  }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
-// Move dragged cards between columns too
-['annCol', 'musicCol'].forEach(id => {
-  const col = document.getElementById(id);
-  col.addEventListener('drop', () => updateCounts());
-});
+// Function to restore saved sounds from IndexedDB
+async function restoreFromDB() {
+  const keys = await idbGetAllKeys();
+  for (const key of keys) {
+    const rec = await idbGet(key);
+    if (!rec || !rec.col) continue;
 
-// Fade Out All - Updated to handle TTS
-$('#fadeAll').addEventListener('click', () => {
-  // Stop any TTS that might be playing
-  if (ttsAudio) {
-      ttsAudio.pause();
-      ttsAudio = null;
+    if (rec.type === 'tts') {
+      const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
+      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === key)) continue;
+      const card = createCard({ name: rec.name, text: rec.text, voiceName: rec.voiceName, idbKey: key });
+      targetCol.appendChild(card);
+    } else {
+      const blob = new Blob([rec.buffer], { type: rec.type });
+      const targetCol = rec.col === 'ann' ? $('#annCol') : $('#musicCol');
+      if ([...targetCol.querySelectorAll('.sound-card')].some(c => c.idbKey === key)) continue;
+      const card = createCard({ name: rec.name.replace(/\.[^/.]+$/, ''), blob, idbKey: key });
+      targetCol.appendChild(card);
+    }
   }
-  const allCards = document.querySelectorAll('.sound-card');
-
-  allCards.forEach(card => {
-    const audio = card.audioElement;
-    if (audio && !audio.paused) {
-      const stopBtn = card.querySelector('.btn-stop');
-      if (stopBtn) {
-        stopBtn.click();
-      }
-    }
-  });
-});
-
-updateCounts();
-
-// ===== TTS Functionality =====
-let isTtsPlaying = false;
-let isTtsGenerating = false;
-
-async function generateTTS(text, voice, action) {
-    if (isTtsGenerating) {
-        showMessage("Please wait for the current audio generation to finish.");
-        return;
-    }
-    if (!text) {
-        showMessage("Please enter some text to generate audio.");
-        return;
-    }
-
-    // ✨ Early duplicate check for "add" requests
-    if (action === 'add') {
-        const fileName = `${text}.wav`;
-        if ([...$('#annCol').querySelectorAll('.sound-card')]
-              .some(c => c.idbKey === fileName)) {
-            showMessage('That announcement is already added.');
-            return; // Stop before generating
-        }
-    }
-
-    isTtsGenerating = true;
-
-    const originalPreviewText = $('#previewBtn').innerHTML;
-    const originalGenerateText = $('#generateBtn').innerHTML;
-    const loadingText = '<svg class="animate-spin h-5 w-5 text-white" ...></svg>';
-
-    $('#previewBtn').innerHTML = loadingText;
-    $('#generateBtn').innerHTML = loadingText;
-    $('#previewBtn').disabled = true;
-    $('#generateBtn').disabled = true;
-
-    // Retry logic with exponential backoff
-    let attempts = 0;
-    const maxAttempts = 3;
-    const initialDelay = 1000;
-
-    while (attempts < maxAttempts) {
-        try {
-            const payload = {
-                contents: [{
-                    parts: [{ text: `Say in a ${TTS_VOICES[voice]}: ${text}` }]
-                }],
-                generationConfig: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: voice }
-                        }
-                    }
-                },
-                model: "gemini-2.5-flash-preview-tts"
-            };
-
-            const apiKey = "YOUR_KEY_HERE";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`;
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) throw new Error(`API call failed: ${response.statusText}`);
-
-            const result = await response.json();
-            const part = result?.candidates?.[0]?.content?.parts?.[0];
-            const audioData = part?.inlineData?.data;
-            const mimeType = part?.inlineData?.mimeType;
-
-            if (audioData && mimeType && mimeType.startsWith("audio/")) {
-                const sampleRate = parseInt(mimeType.match(/rate=(\d+)/)[1], 10);
-                const pcmData = base64ToArrayBuffer(audioData);
-                const pcm16 = new Int16Array(pcmData);
-                const wavBlob = pcmToWav(pcm16, sampleRate);
-
-                if (action === 'preview') {
-                    if (ttsAudio) ttsAudio.pause();
-                    ttsAudio = new Audio(URL.createObjectURL(wavBlob));
-                    ttsAudio.addEventListener('ended', () => {
-                        ttsAudio = null;
-                        isTtsPlaying = false;
-                    });
-                    ttsAudio.play();
-                    isTtsPlaying = true;
-                } else if (action === 'add') {
-                    const fileName = `${text}.wav`;
-                    const arrayBuffer = await wavBlob.arrayBuffer();
-                    await idbSet(fileName, {
-                        name: fileName,
-                        buffer: arrayBuffer,
-                        type: wavBlob.type,
-                        col: 'ann'
-                    });
-                    const card = createCard({ name: text, blob: wavBlob, idbKey: fileName });
-                    $('#annCol').appendChild(card);
-                    updateCounts();
-                }
-                break;
-            } else {
-                throw new Error("Invalid API response format");
-            }
-        } catch (e) {
-            console.error(`Attempt ${attempts + 1} failed:`, e);
-            attempts++;
-            if (attempts < maxAttempts) {
-                const delay = initialDelay * Math.pow(2, attempts - 1);
-                await new Promise(res => setTimeout(res, delay));
-            } else {
-                showMessage("Failed to generate audio after multiple attempts. Please try again later.");
-            }
-        }
-    }
-
-    $('#previewBtn').innerHTML = originalPreviewText;
-    $('#generateBtn').innerHTML = originalGenerateText;
-    $('#previewBtn').disabled = false;
-    $('#generateBtn').disabled = false;
-    isTtsGenerating = false;
+  updateCounts();
 }
 
-$('#previewBtn').addEventListener('click', () => {
-    generateTTS($('#ttsText').value.trim(), $('#voiceSelect').value, 'preview');
-});
+// ===== Browser TTS Functionality =====
+function generateBrowserTTS(text, voiceName, action) {
+  if (!('speechSynthesis' in window)) {
+    showMessage("Browser TTS is not supported in this browser.");
+    return;
+  }
+  if (!text) {
+    showMessage("Please enter some text to generate audio.");
+    return;
+  }
+  if (!voiceName) {
+    showMessage("Please select a voice before performing this action.");
+    return;
+  }
 
-$('#generateBtn').addEventListener('click', () => {
-    generateTTS($('#ttsText').value.trim(), $('#voiceSelect').value, 'add');
-});
+  if (action === 'preview') {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    const selectedVoice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      showMessage(`The selected voice "${voiceName}" is not available.`);
+    }
+  } else if (action === 'add') {
+    const name = text;
+    const textKey = `tts_${name}_${voiceName}`;
+    const card = createCard({ name, text, voiceName, idbKey: textKey });
+    $('#annCol').appendChild(card);
+    updateCounts();
 
-// ===== Fixed Recording Functionality =====
-let mediaRecorder;
-let audioChunks = [];
-let isRecording = false;
-let microphoneStream = null;
-let hasMicPermission = false;
+    // Persist TTS cards to IndexedDB
+    idbSet(textKey, { name: text, text, voiceName, type: 'tts', col: 'ann' });
+  }
+}
 
-const recordBtn = $('#recordBtn');
-
+// ===== Recording Functionality =====
 async function getMicrophoneStream() {
   if (microphoneStream) return microphoneStream;
   try {
@@ -1022,38 +707,27 @@ async function getMicrophoneStream() {
     return null;
   }
 }
-
 function startRecording(stream) {
   if (isRecording || !stream) return;
   try {
-    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ? 'audio/webm;codecs=opus' : '';
-    mediaRecorder = mime
-      ? new MediaRecorder(stream, { mimeType: mime })
-      : new MediaRecorder(stream);
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : '';
+    mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
   } catch (e) {
     console.error('MediaRecorder not supported:', e);
     showMessage('Recording not supported on this browser/device.');
     return;
   }
   audioChunks = [];
-  mediaRecorder.ondataavailable = e => {
-    if (e.data && e.data.size > 0) audioChunks.push(e.data);
-  };
-  mediaRecorder.onstop = async () => { // ✅ async for idbSet
+  mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
+  mediaRecorder.onstop = async () => {
     const type = audioChunks[0]?.type || 'audio/webm';
     const audioBlob = new Blob(audioChunks, { type });
     const fileName = `Recording_${Date.now()}.${type.split('/')[1] || 'webm'}`;
-    // ✅ Save to IndexedDB so it’s restored later
-const arrayBuffer = await audioBlob.arrayBuffer();
-await idbSet(fileName, { name: fileName, buffer: arrayBuffer, type, col: 'ann' }); // add col
-const card = createCard({
-  name: 'Recording ' + new Date().toLocaleTimeString(),
-  blob: audioBlob,
-  idbKey: fileName
-});
-$('#annCol').appendChild(card);
-updateCounts();
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    await idbSet(fileName, { name: fileName, buffer: arrayBuffer, type, col: 'ann' });
+    const card = createCard({ name: 'Recording ' + new Date().toLocaleTimeString(), blob: audioBlob, idbKey: fileName });
+    $('#annCol').appendChild(card);
+    updateCounts();
   };
   mediaRecorder.start();
   isRecording = true;
@@ -1062,7 +736,6 @@ updateCounts();
   $('#recordingTooltip').textContent = 'Release to save';
   $('#recordingTooltip').style.opacity = '1';
 }
-
 function stopRecording() {
   if (!isRecording) return;
   mediaRecorder.stop();
@@ -1073,32 +746,153 @@ function stopRecording() {
   $('#recordingTooltip').style.opacity = '0';
 }
 
-// Use pointer events for desktop + mobile
+const recordBtn = $('#recordBtn');
 recordBtn.addEventListener('pointerdown', async (e) => {
   e.preventDefault();
-  // First tap: request permission only
-  if (!hasMicPermission) {
-    await getMicrophoneStream();
-    return;
-  }
-  // If permission already granted, start recording on hold
+  if (!hasMicPermission) { await getMicrophoneStream(); return; }
   startRecording(microphoneStream);
 });
+recordBtn.addEventListener('pointerup', () => { if (isRecording) stopRecording(); });
+recordBtn.addEventListener('pointercancel', () => { if (isRecording) stopRecording(); });
 
-recordBtn.addEventListener('pointerup', () => {
-  if (isRecording) stopRecording();
-});
-recordBtn.addEventListener('pointercancel', () => {
-  if (isRecording) stopRecording();
-});
-
-// Initial setup - The microphone will now be initialized on first click/touch
-window.onload = () => {
-    const defaultVoice = Object.keys(TTS_VOICES)[0];
-    if (defaultVoice) {
-        voiceSelect.value = defaultVoice;
+// ===== Initialization and Event Listeners =====
+const voiceSelect = $('#voiceSelect');
+window.speechSynthesis.onvoiceschanged = () => {
+  const voices = window.speechSynthesis.getVoices();
+  voiceSelect.innerHTML = '<option value="">Select a voice...</option>';
+  voices.forEach(voice => {
+    const option = document.createElement('option');
+    option.value = voice.name;
+    option.textContent = `${voice.name} (${voice.lang})`;
+    voiceSelect.appendChild(option);
+  });
+  // If voices are already loaded, populate immediately
+  if (voices.length > 0) {
+    const lastSelectedVoice = localStorage.getItem('lastSelectedVoice');
+    if (lastSelectedVoice && voices.some(v => v.name === lastSelectedVoice)) {
+        voiceSelect.value = lastSelectedVoice;
+    } else {
+        voiceSelect.value = voices[0].name;
     }
+  }
 };
+
+voiceSelect.addEventListener('change', () => {
+    localStorage.setItem('lastSelectedVoice', voiceSelect.value);
+});
+
+// Initial voice population call
+if (window.speechSynthesis.getVoices().length > 0) {
+  window.speechSynthesis.onvoiceschanged();
+}
+
+
+$('#previewBtn').addEventListener('click', () => {
+  const text = $('#ttsText').value.trim();
+  const voiceName = $('#voiceSelect').value;
+  generateBrowserTTS(text, voiceName, 'preview');
+});
+$('#generateBtn').addEventListener('click', () => {
+  const text = $('#ttsText').value.trim();
+  const voiceName = $('#voiceSelect').value;
+  generateBrowserTTS(text, voiceName, 'add');
+});
+$('#fadeInSlider').addEventListener('input', e => {
+  fadeInTime = parseFloat(e.target.value);
+  $('#fadeInVal').textContent = fadeInTime.toFixed(1);
+  saveSettingsLS({ fadeIn: fadeInTime, fadeOut: fadeOutTime });
+});
+$('#fadeOutSlider').addEventListener('input', e => {
+  fadeOutTime = parseFloat(e.target.value);
+  $('#fadeOutVal').textContent = fadeOutTime.toFixed(1);
+  saveSettingsLS({ fadeIn: fadeInTime, fadeOut: fadeOutTime });
+});
+$('#fadeAll').addEventListener('click', () => {
+  window.speechSynthesis.cancel();
+  $$('.sound-card').forEach(card => {
+    if (card.dataset.type === 'audio') {
+      const audio = card.audioElement;
+      if (audio && !audio.paused) card.querySelector('.btn-stop').click();
+    }
+  });
+});
+columns.forEach(({ wrap, input }) => {
+  wrap.addEventListener('click', (e) => {
+    if (e.target === wrap || e.target.closest('.drop-area')) input.click();
+  });
+  wrap.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    const dragging = $('.dragging');
+    if (!dragging) wrap.classList.add('drag-over');
+  });
+  wrap.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const dragging = $('.dragging');
+    if (dragging) {
+      wrap.classList.remove('drag-over');
+      wrap.classList.add('ring-2', 'ring-sky-500');
+      const afterElement = getDragAfterElement(wrap, e.clientY);
+      if (afterElement == null) wrap.appendChild(dragging);
+      else wrap.insertBefore(dragging, afterElement);
+    } else {
+      wrap.classList.add('drag-over');
+    }
+  });
+  wrap.addEventListener('dragleave', (e) => {
+    if (!wrap.contains(e.relatedTarget)) {
+      wrap.classList.remove('ring-2', 'ring-sky-500', 'drag-over');
+    }
+  });
+  wrap.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    wrap.classList.remove('ring-2', 'ring-sky-500', 'drag-over');
+    const files = Array.from(e.dataTransfer.files || []).filter(f => f.type.startsWith('audio/'));
+    if (files.length) {
+      addFilesToColumn(files, wrap);
+    } else {
+      const dragging = $('.dragging');
+      if (dragging && dragging.parentElement !== wrap) {
+        wrap.appendChild(dragging);
+        updateCounts();
+        if (dragging.idbKey) {
+            const newCol = wrap.id === 'annCol' ? 'ann' : 'music';
+            const rec = await idbGet(dragging.idbKey);
+            if (rec) {
+                rec.col = newCol;
+                await idbSet(dragging.idbKey, rec);
+            }
+        }
+      }
+    }
+    updateCounts();
+  });
+  input.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length) { addFilesToColumn(files, wrap); input.value = ''; }
+  });
+});
+function getDragAfterElement(container, y) {
+  const draggableElements = [...container.querySelectorAll('.sound-card:not(.dragging)')];
+  return draggableElements.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closest.offset) return { offset: offset, element: child };
+    else return closest;
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  const s = loadSettingsLS();
+  fadeInTime = s.fadeIn ? parseFloat(s.fadeIn) : 2.0;
+  fadeOutTime = s.fadeOut ? parseFloat(s.fadeOut) : 2.0;
+  $('#fadeInSlider').value = fadeInTime;
+  $('#fadeOutSlider').value = fadeOutTime;
+  $('#fadeInVal').textContent = fadeInTime.toFixed(1);
+  $('#fadeOutVal').textContent = fadeOutTime.toFixed(1);
+  await restoreFromDB();
+});
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js');
 </script>
 </body>
 </html>
