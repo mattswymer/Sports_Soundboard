@@ -325,17 +325,21 @@ function loadSettingsLS() {
 let fadeInTime = 2.0;
 let fadeOutTime = 2.0;
 const columns = [{ wrap: $('#annCol'), input: $('#annInput') }, { wrap: $('#musicCol'), input: $('#musicInput') }];
-const activeUtterances = new Set();
+const activeAudios = new Set();
 let mediaRecorder;
 let audioChunks = [];
 let isRecording = false;
 let microphoneStream = null;
 let hasMicPermission = false;
+let currentUtterance = null;
 
 // ===== UI & Event Handling =====
 function setHasItemsClass(col) {
-  if (col.children.length > 1) col.classList.add('has-items');
-  else col.classList.remove('has-items');
+  if (col.querySelectorAll('.sound-card').length > 0) {
+    col.classList.add('has-items');
+  } else {
+    col.classList.remove('has-items');
+  }
 }
 function updateCounts() {
   $('#annCount').textContent = $('#annCol').querySelectorAll('.sound-card').length;
@@ -344,6 +348,18 @@ function updateCounts() {
 }
 
 // Card builder for local audio files and TTS announcements
+function makeToggle(labelText) {
+  const wrap = document.createElement('label');
+  wrap.className = 'flex items-center gap-2 text-xs select-none';
+  wrap.innerHTML = `
+    <span>${labelText}</span>
+    <span class="toggle inline-block">
+      <input type="checkbox" />
+      <span class="track"><span class="thumb"></span></span>
+    </span>`;
+  return { wrap, input: wrap.querySelector('input') };
+}
+
 function createCard({ name, url, blob, idbKey, text, voiceName }) {
   const card = document.createElement('div');
   card.idbKey = idbKey || null;
@@ -354,6 +370,10 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
   const row = document.createElement('div');
   row.className = 'flex items-center gap-3';
   card.appendChild(row);
+
+  const dragDot = document.createElement('div');
+  dragDot.className = 'text-slate-500 cursor-grab select-none';
+  dragDot.textContent = '⋮⋮';
 
   const playBtn = document.createElement('button');
   playBtn.className = 'btn-playpause shrink-0';
@@ -370,10 +390,10 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
   delBtn.className = 'text-slate-300 hover:text-red-400';
   delBtn.setAttribute('title', 'Delete');
   delBtn.innerHTML = '🗑';
-  row.append(playBtn, stopBtn, title, delBtn);
+  row.append(dragDot, playBtn, stopBtn, title, delBtn);
 
   let isPlaying = false;
-  let audio, utterance;
+  let audio;
   
   if (card.dataset.type === 'audio') {
     // Logic for local audio files
@@ -474,16 +494,15 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
     playBtn.addEventListener('click', () => {
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        utterance = new SpeechSynthesisUtterance(text);
-        utterance.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
-        window.speechSynthesis.speak(utterance);
+        currentUtterance = new SpeechSynthesisUtterance(text);
+        currentUtterance.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
+        window.speechSynthesis.speak(currentUtterance);
         isPlaying = true;
         setActive(true);
-        activeUtterances.add(utterance);
-        utterance.onend = () => {
+        currentUtterance.onend = () => {
           isPlaying = false;
           setActive(false);
-          activeUtterances.delete(utterance);
+          currentUtterance = null;
         };
       } else {
         showMessage("Browser TTS is not supported.");
@@ -495,7 +514,7 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
         window.speechSynthesis.cancel();
         isPlaying = false;
         setActive(false);
-        activeUtterances.clear();
+        currentUtterance = null;
       }
     });
   }
@@ -504,8 +523,7 @@ function createCard({ name, url, blob, idbKey, text, voiceName }) {
     if (!confirm('Delete this sound?')) return;
     try {
       if (card.dataset.type === 'audio') {
-        audio.pause();
-        activeAudios.delete(audio);
+        if (audio) { audio.pause(); activeAudios.delete(audio); }
       } else {
         if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
       }
@@ -615,8 +633,13 @@ function generateBrowserTTS(text, voiceName, action) {
   if (action === 'preview') {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
-    window.speechSynthesis.speak(utterance);
+    const selectedVoice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      window.speechSynthesis.speak(utterance);
+    } else {
+      showMessage(`The selected voice "${voiceName}" is not available.`);
+    }
   } else if (action === 'add') {
     const name = text;
     const textKey = `tts_${name}_${voiceName}`;
