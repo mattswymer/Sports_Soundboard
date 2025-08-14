@@ -340,7 +340,7 @@ let audioChunks = [];
 let isRecording = false;
 let microphoneStream = null;
 let hasMicPermission = false;
-let currentUtterance = null;
+let activeUtterances = new Set();
 
 // ===== UI & Event Handling =====
 function setHasItemsClass(col) {
@@ -356,7 +356,6 @@ function updateCounts() {
   columns.forEach(c => setHasItemsClass(c.wrap));
 }
 
-// Card builder for local audio files and TTS announcements
 function makeToggle(labelText) {
   const wrap = document.createElement('label');
   wrap.className = 'flex items-center gap-2 text-xs select-none';
@@ -369,17 +368,18 @@ function makeToggle(labelText) {
   return { wrap, input: wrap.querySelector('input') };
 }
 
-function createCard({ name, url, blob, idbKey }) {
+// Refactored Card builder for both audio files and TTS announcements
+function createCard({ name, url, blob, idbKey, text, voiceName }) {
   const card = document.createElement('div');
   card.idbKey = idbKey || null;
   card.className = 'sound-card group/card bg-slate-800 border border-slate-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-2 cursor-grab';
   card.draggable = true;
+  card.dataset.type = text ? 'tts' : 'audio';
 
   const row = document.createElement('div');
   row.className = 'flex items-center gap-3';
   card.appendChild(row);
 
-  // Controls
   const dragDot = document.createElement('div');
   dragDot.className = 'text-slate-500 cursor-grab select-none';
   dragDot.textContent = '⋮⋮';
@@ -410,46 +410,154 @@ function createCard({ name, url, blob, idbKey }) {
 
   row.append(dragDot, playBtn, stopBtn, title, editBtn, delBtn);
 
-  // Toggles
-  const toggles = document.createElement('div');
-  toggles.className = 'flex items-center gap-4 pl-14';
-  const fadeInT = makeToggle('Fade In');
-  const fadeOutT = makeToggle('Fade Out');
-  fadeInT.input.checked = true;
-  fadeOutT.input.checked = true;
-  toggles.append(fadeInT.wrap, fadeOutT.wrap);
-  card.appendChild(toggles);
-
-  // Progress
-  const progressWrap = document.createElement('div');
-  progressWrap.className = 'pl-14';
-  progressWrap.innerHTML = `
-    <div class="progress-bar-wrap"><div class="progress-bar"></div></div>
-    <div class="flex justify-between text-xs text-slate-300 mt-0.5">
-      <span class="cur">0:00</span>
-      <span class="dur">0:00</span>
-    </div>`;
-  const progressBg = progressWrap.querySelector('.progress-bar-wrap');
-  const progress = progressWrap.querySelector('.progress-bar');
-  const curLbl = progressWrap.querySelector('.cur');
-  const durLbl = progressWrap.querySelector('.dur');
-  card.appendChild(progressWrap);
-
-  // Audio element
-  const audio = new Audio();
-  if (url) {
-    audio.src = url;
-  } else if (blob) {
-    audio.src = URL.createObjectURL(blob);
-  }
-  audio.preload = 'metadata';
-  audio.crossOrigin = 'anonymous';
-  audio.volume = 1;
-  card.audioElement = audio;
-
   let isPlaying = false;
+  let audio, utterance;
+  
+  if (card.dataset.type === 'audio') {
+    // Logic for local audio files
+    const toggles = document.createElement('div');
+    toggles.className = 'flex items-center gap-4 pl-14';
+    const fadeInT = makeToggle('Fade In');
+    const fadeOutT = makeToggle('Fade Out');
+    fadeInT.input.checked = true;
+    fadeOutT.input.checked = true;
+    toggles.append(fadeInT.wrap, fadeOutT.wrap);
+    card.appendChild(toggles);
+    
+    const progressWrap = document.createElement('div');
+    progressWrap.className = 'pl-14';
+    progressWrap.innerHTML = `
+      <div class="progress-bar-wrap"><div class="progress-bar"></div></div>
+      <div class="flex justify-between text-xs text-slate-300 mt-0.5">
+        <span class="cur">0:00</span>
+        <span class="dur">0:00</span>
+      </div>`;
+    const progressBg = progressWrap.querySelector('.progress-bar-wrap');
+    const progress = progressWrap.querySelector('.progress-bar');
+    const curLbl = progressWrap.querySelector('.cur');
+    const durLbl = progressWrap.querySelector('.dur');
+    card.appendChild(progressWrap);
 
-  // Visual active state
+    audio = new Audio();
+    if (url) {
+      audio.src = url;
+    } else if (blob) {
+      audio.src = URL.createObjectURL(blob);
+    }
+    audio.preload = 'metadata';
+    audio.crossOrigin = 'anonymous';
+    audio.volume = 1;
+    card.audioElement = audio;
+
+    const updateDuration = () => { durLbl.textContent = formatTime(audio.duration); };
+    audio.addEventListener('loadedmetadata', updateDuration);
+    if (audio.readyState >= 1) updateDuration();
+
+    audio.addEventListener('timeupdate', () => {
+      if (!isNaN(audio.duration) && audio.duration > 0) {
+        progress.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+        curLbl.textContent = formatTime(audio.currentTime);
+      }
+    });
+    progressBg.addEventListener('click', (e) => {
+      if (!isNaN(audio.duration) && audio.duration > 0) {
+        const rect = progressBg.getBoundingClientRect();
+        audio.currentTime = ((e.clientX - rect.left) / rect.width) * audio.duration;
+      }
+    });
+    audio.addEventListener('ended', () => {
+      isPlaying = false;
+      setActive(false);
+      progress.style.width = '0%';
+      curLbl.textContent = '0:00';
+      activeAudios.delete(audio);
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (!isPlaying) {
+        if (fadeInT.input.checked) audio.volume = 0;
+        audio.play();
+        isPlaying = true;
+        setActive(true);
+        activeAudios.add(audio);
+        if (fadeInT.input.checked) fadeTo(audio, 1, Math.round(fadeInTime * 1000));
+        else audio.volume = 1;
+      } else {
+        if (fadeOutT.input.checked) {
+          fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
+            stopAfter: true, reset: false, onDone: () => { isPlaying = false; setActive(false); activeAudios.delete(audio); }
+          });
+        } else {
+          audio.pause();
+          isPlaying = false;
+          setActive(false);
+          activeAudios.delete(audio);
+        }
+      }
+    });
+    stopBtn.addEventListener('click', () => {
+      if (fadeOutT.input.checked && !audio.paused && audio.volume > 0) {
+        fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
+          stopAfter: true, reset: true, onDone: () => { isPlaying = false; setActive(false); activeAudios.delete(audio); }
+        });
+      } else {
+        audio.pause();
+        audio.currentTime = 0;
+        isPlaying = false;
+        setActive(false);
+        activeAudios.delete(audio);
+      }
+    });
+  } else {
+    // Logic for TTS cards
+    card.dataset.text = text;
+    card.dataset.voice = voiceName;
+    
+    playBtn.addEventListener('click', () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        utterance = new SpeechSynthesisUtterance(text);
+        utterance.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
+        window.speechSynthesis.speak(utterance);
+        isPlaying = true;
+        setActive(true);
+        activeUtterances.add(utterance);
+        utterance.onend = () => {
+          isPlaying = false;
+          setActive(false);
+          activeUtterances.delete(utterance);
+        };
+      } else {
+        showMessage("Browser TTS is not supported.");
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        isPlaying = false;
+        setActive(false);
+        activeUtterances.clear();
+      }
+    });
+  }
+
+  delBtn.addEventListener('click', () => {
+    if (!confirm('Delete this sound?')) return;
+    try {
+      if (card.dataset.type === 'audio') {
+        audio.pause();
+        activeAudios.delete(audio);
+      } else {
+        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+      }
+    } catch {}
+    card.remove();
+    updateCounts();
+    if (card.idbKey) idbDelete(card.idbKey);
+    if (blob) URL.revokeObjectURL(audio.src);
+  });
+
   function setActive(on) {
     if (on) {
       card.classList.add('ring-2', 'ring-blue-400', 'bg-slate-700');
@@ -462,120 +570,34 @@ function createCard({ name, url, blob, idbKey }) {
     }
   }
 
-  // Single delete handler with confirm
-  delBtn.addEventListener('click', () => {
-    if (!confirm('Delete this sound?')) return;
-    try { audio.pause(); activeAudios.delete(audio); } catch {}
-    card.remove();
-    updateCounts();
-    if (card.idbKey) idbDelete(card.idbKey);
-    if (blob) URL.revokeObjectURL(audio.src);
-  });
+  function fadeTo(audio, target, durationMs, { stopAfter = false, reset = false, onDone } = {}) {
+    const start = audio.volume;
+    const startTime = performance.now();
+    const dur = Math.max(0, durationMs);
+    if (audio.__fadeRaf) cancelAnimationFrame(audio.__fadeRaf);
+    function step(t) {
+      const p = dur === 0 ? 1 : Math.min(1, (t - startTime) / dur);
+      audio.volume = start + (target - start) * p;
+      if (p < 1) {
+        audio.__fadeRaf = requestAnimationFrame(step);
+      } else {
+        if (stopAfter) { audio.pause(); if (reset) audio.currentTime = 0; }
+        if (onDone) onDone();
+      }
+    }
+    audio.__fadeRaf = requestAnimationFrame(step);
+  }
 
-  // Rename
   editBtn.addEventListener('click', () => {
     const newName = prompt('Rename sound', title.textContent.trim());
     if (newName && newName.trim()) title.textContent = newName.trim();
   });
 
-  // Duration once known
-  audio.addEventListener('loadedmetadata', () => {
-    durLbl.textContent = formatTime(audio.duration);
-  });
-
-  // Progress updates
-  audio.addEventListener('timeupdate', () => {
-    if (!isNaN(audio.duration) && audio.duration > 0) {
-      const percentage = (audio.currentTime / audio.duration) * 100;
-      progress.style.width = `${percentage}%`;
-      curLbl.textContent = formatTime(audio.currentTime);
-    }
-  });
-
-  // Scrub
-  progressBg.addEventListener('click', (e) => {
-    if (!isNaN(audio.duration) && audio.duration > 0) {
-      const rect = progressBg.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const percentage = clickX / rect.width;
-      audio.currentTime = percentage * audio.duration;
-    }
-  });
-
-  // Ended
-  audio.addEventListener('ended', () => {
-    isPlaying = false;
-    setActive(false);
-    progress.style.width = '0%';
-    curLbl.textContent = '0:00';
-    activeAudios.delete(audio);
-  });
-
-  // Play/Pause logic with fades
-  playBtn.addEventListener('click', () => {
-    if (!isPlaying) {
-      // play
-      if (fadeInT.input.checked) {
-        audio.volume = 0;
-      }
-      audio.play();
-      isPlaying = true;
-      setActive(true);
-      activeAudios.add(audio);
-      if (fadeInT.input.checked) {
-        fadeTo(audio, 1, Math.round(fadeInTime * 1000));
-      } else {
-        audio.volume = 1;
-      }
-    } else {
-      // pause
-      if (fadeOutT.input.checked) {
-        fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
-          stopAfter: true,
-          reset: false,
-          onDone: () => {
-            isPlaying = false;
-            setActive(false);
-            activeAudios.delete(audio);
-          }
-        });
-      } else {
-        audio.pause();
-        isPlaying = false;
-        setActive(false);
-        activeAudios.delete(audio);
-      }
-    }
-  });
-
-  // Stop button
-  stopBtn.addEventListener('click', () => {
-    if (fadeOutT.input.checked && !audio.paused && audio.volume > 0) {
-      fadeTo(audio, 0, Math.round(fadeOutTime * 1000), {
-        stopAfter: true,
-        reset: true,
-        onDone: () => {
-          isPlaying = false;
-          setActive(false);
-          activeAudios.delete(audio);
-        }
-      });
-    } else {
-      audio.pause();
-      audio.currentTime = 0;
-      isPlaying = false;
-      setActive(false);
-      activeAudios.delete(audio);
-    }
-  });
-
-  // Drag handle
   card.addEventListener('dragstart', (e) => {
     card.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
   });
   card.addEventListener('dragend', () => card.classList.remove('dragging'));
-
   return card;
 }
 
@@ -730,11 +752,27 @@ window.speechSynthesis.onvoiceschanged = () => {
     option.textContent = `${voice.name} (${voice.lang})`;
     voiceSelect.appendChild(option);
   });
+  // If voices are already loaded, populate immediately
+  if (voices.length > 0) {
+    const lastSelectedVoice = localStorage.getItem('lastSelectedVoice');
+    if (lastSelectedVoice && voices.some(v => v.name === lastSelectedVoice)) {
+        voiceSelect.value = lastSelectedVoice;
+    } else {
+        voiceSelect.value = voices[0].name;
+    }
+  }
 };
-// If voices are already loaded, populate immediately
+
+voiceSelect.addEventListener('change', () => {
+    localStorage.setItem('lastSelectedVoice', voiceSelect.value);
+});
+
+// Initial voice population call
 if (window.speechSynthesis.getVoices().length > 0) {
   window.speechSynthesis.onvoiceschanged();
 }
+
+
 $('#previewBtn').addEventListener('click', () => {
   const text = $('#ttsText').value.trim();
   const voiceName = $('#voiceSelect').value;
@@ -812,6 +850,7 @@ columns.forEach(({ wrap, input }) => {
         }
       }
     }
+    updateCounts();
   });
   input.addEventListener('change', (e) => {
     const files = Array.from(e.target.files || []);
