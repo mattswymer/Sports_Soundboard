@@ -6,7 +6,7 @@ This is a simple, browser-based soundboard designed for baseball events, built w
 Features
 --------
 
--   **AI-Powered Speech Generation**: Create custom audio clips from text using the Gemini API. You can select from a variety of voices to generate announcements.
+-   **AI-Powered Speech Generation**: Create custom audio clips from text using any text-to-speech API. You can select from a variety of voices to generate announcements.
 
 -   **Microphone Recording**: Press and hold the microphone button to record your own audio clips, which are then saved as sound cards.
 
