@@ -555,10 +555,36 @@ document.addEventListener('DOMContentLoaded', () => {
       playBtn.addEventListener('click', () => {
           if (wavesurfer.isPlaying()) {
               wavesurfer.pause();
+              return;
+          }
+
+          const startSeconds = parseFloat(startTimeInput.value) || 0;
+          const duration = wavesurfer.getDuration();
+          if (startSeconds > 0 && duration > 0) {
+              const progress = startSeconds / duration;
+              wavesurfer.seekTo(progress);
           } else {
-              const start = parseFloat(startTimeInput.value) || 0;
-              wavesurfer.setOptions({ fadeIn: fadeInToggle.input.checked ? (fadeInTime * 1000) : 0 });
-              wavesurfer.play(start);
+              wavesurfer.seekTo(0);
+          }
+
+          if (fadeInToggle.input.checked && fadeInTime > 0) {
+              const targetVolume = parseFloat(volumeSlider.value);
+              wavesurfer.setVolume(0);
+              wavesurfer.play();
+              let start = null;
+              const fade = (timestamp) => {
+                  if (!start) start = timestamp;
+                  const elapsed = timestamp - start;
+                  const progress = Math.min(1, elapsed / (fadeInTime * 1000));
+                  wavesurfer.setVolume(targetVolume * progress);
+                  if (progress < 1) {
+                      requestAnimationFrame(fade);
+                  }
+              };
+              requestAnimationFrame(fade);
+          } else {
+              wavesurfer.setVolume(parseFloat(volumeSlider.value));
+              wavesurfer.play();
           }
       });
 
@@ -596,9 +622,9 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       };
 
-      volumeSlider.addEventListener('input', () => wavesurfer.setVolume(volumeSlider.value));
-      volumeSlider.addEventListener('change', () => saveData('volume', parseFloat(volumeSlider.value)));
-      startTimeInput.addEventListener('change', () => saveData('startTime', parseFloat(startTimeInput.value)));
+      volumeSlider.addEventListener('input', (e) => wavesurfer.setVolume(e.target.value));
+      volumeSlider.addEventListener('change', (e) => saveData('volume', parseFloat(e.target.value)));
+      startTimeInput.addEventListener('change', (e) => saveData('startTime', parseFloat(e.target.value)));
 
     } else { // TTS Card Logic
       card.dataset.text = text;
