@@ -1,67 +1,88 @@
-Baseball Soundboard Pro
+Sports Soundboard Pro
 =======================
 
-This is a simple, browser-based soundboard designed for baseball events, built with plain HTML, CSS (using Tailwind CSS), and JavaScript. It allows users to import and play custom sound files, with features like fading, AI-powered speech generation, microphone recording, and a drag-and-drop interface.
+A professional, browser-based soundboard designed for live sports events, podcasts, or any situation where you need quick access to high-quality audio clips, announcements, and music.
 
-Features
---------
-
-- **Customizable Sound Columns**: Two columns, "Announcements" and "Music," for organizing different types of sound clips.
-
-- **Drag-and-Drop Interface**: Easily add new audio files by dragging them into the designated drop zones.
-
-- **Click-to-Import**: Alternatively, click on the drop zone to open a file selection dialog.
-
-- **Playback Controls**: Each sound card includes a play/pause button and a stop button.
-
-- **Fading Effects**: Toggles are available on each sound card to enable customizable fade-in and fade-out effects when a sound is played or stopped.
-
-- **Global Fade Out**: A "Fade Out All" button allows you to gracefully stop all currently playing audio tracks and any active AI speech at once.
-
-- **Drag-and-Drop Reordering**: Rearrange sound cards within a column by dragging them to a new position.
-
-- **Responsive Design**: The layout adapts to different screen sizes, from mobile to desktop.
-
-### AI Version Only
-
-- **AI-Powered Speech Generation**: Create custom audio clips from text using any text-to-speech API. You can select from a variety of voices to generate announcements.
-
-- **Microphone Recording**: Press and hold the microphone button to record your own audio clips, which are then saved as sound cards.
-
-How to Use
+✨ Features
 ----------
 
-1. **Open the File**: Simply open the Baseball Soundboard Pro.html or 'Baseball Soundboard Pro With AI.html' file in a modern web browser.
+-   **Two-Column Layout:** Organize your sounds into "Announcements" and "Music" for easy access.
 
-2. **Add Sounds (Local Files)**: Drag and drop audio files (e.g., MP3, WAV) from your computer into either the "Announcements" or "Music" drop zones. You can also click the drop zone to select files.
+-   **Multiple Audio Sources:**
 
-3. **Play Sounds**: Click the ▶ button on a sound card to play the audio. The button will change to a ⏸ icon, which you can click to pause.
+    -   **Upload:** Add your own audio files (`.mp3`, `.wav`, `.ogg`, etc.).
 
-4. **Stop Sounds**: Click the ⏹ button to stop the audio and reset the playback position.
+    -   **Text-to-Speech (TTS):** Generate spoken announcements on the fly.
 
-5. **Adjust Fades**: Use the sliders at the top of the page to set the default fade-in and fade-out times in seconds. You can enable or disable these fades for each individual sound card using the toggles.
+    -   **Microphone Recording:** Record short clips directly in the app.
 
-6. **Fade Out All**: Click the "Fade Out All" button to stop all playing sounds simultaneously with a fade-out effect.
+-   **Advanced Audio Controls:**
 
-7. **Rename/Delete**: Use the ✎ icon to rename a sound card or the 🗑 icon to delete it.
+    -   Individual volume control for each sound.
 
-### AI Version Only
+    -   Global Fade In and Fade Out controls.
 
-1. **Allow Microphone Access**: The first time you open the page, your browser will ask for microphone permission. This is necessary for the recording feature. Please click "Allow."
+    -   Individual toggles for fade effects on each clip.
 
-2. **Add Sounds (AI)**: In the "Quick Audio Generation" section, type a phrase into the text box, select a voice from the dropdown, and click "➕ Add" to create a new sound card with the AI-generated audio.
+    -   "Fade Out All" button to smoothly silence all playing audio.
 
-3. **Add Sounds (Recording)**: Press and hold the 🎙️ microphone button to start recording. A red pulsing indicator will appear. Release the button to save the recording as a new sound card.
+-   **Persistent Storage:** All your uploaded sounds, recordings, and generated clips are saved in your browser using IndexedDB, so they'll be there the next time you open the app.
 
-Technical Details
------------------
+-   **Drag & Drop:** Easily upload files and reorder your sound cards within and between columns.
 
-- **HTML5**: Provides the document structure.
+-   **Waveform Visualization:** See a visual representation of your audio clips, and click to seek to a specific point.
 
-- **Tailwind CSS**: A utility-first CSS framework for rapid styling and a clean, modern look.
+🚀 How to Use
+-------------
 
-- **JavaScript**: Powers all interactive functionality, including audio playback, drag-and-drop logic, and UI updates.
+### 1\. Adding Sounds
 
-- **Text-to-speech API**: Used for the text-to-speech functionality. **Important Note:** To run the AI features locally, you must provide your own API key. Find line **794** in the code and replace the placeholder with your key: const apiKey = "YOUR_API_KEY_HERE";.
+You have three ways to add sounds to the board:
 
-- **MediaRecorder API**: Used for the microphone recording feature.
+-   **Upload Files:**
+
+    1.  **Drag and drop** your audio files directly onto either the "Announcements" or "Music" columns.
+
+    2.  Alternatively, **click inside the dashed-line box** to open a file selection dialog and choose one or more audio files.
+
+-   **Generate Speech (Text-to-Speech):**
+
+    1.  Type the text you want to be spoken into the input field at the top (e.g., "Now batting, number 42...").
+
+    2.  Select a voice from the dropdown menu.
+
+    3.  Click **🔊 Preview** to hear it, or click **➕ Add** to add it as a new sound card in the "Announcements" column.
+
+-   **Record from Microphone:**
+
+    1.  **Click and hold** the **🎙️** button. Your browser may ask for microphone permission the first time.
+
+    2.  Speak into your microphone.
+
+    3.  **Release the button** to stop recording. The clip will be automatically saved and added to the "Announcements" column.
+
+### 2\. Playing and Controlling Sounds
+
+-   **Play/Pause:** Click the **▶** button to play a sound. It will turn into a **⏸** button, which you can click to pause.
+
+-   **Stop:** Click the **⏹** button to stop the audio immediately (or fade it out if the "Fade Out" toggle is enabled).
+
+-   **Volume:** Use the volume slider on each audio card to adjust its volume independently.
+
+-   **Fade Effects:** Use the "Fade In" and "Fade Out" toggles on each card to control whether it uses the global fade settings when playing or stopping.
+
+-   **Global Fade:** Adjust the **Fade In (s)** and **Fade Out (s)** sliders at the top right to control the duration for all fade effects.
+
+-   **Fade Out All:** Click the **Fade Out All** button to smoothly stop every sound that is currently playing.
+
+### 3\. Managing Sounds
+
+-   **Reorder:** Click and drag any sound card using the **⋮⋮** handle to move it to a new position, either within its current column or to the other column.
+
+-   **Rename:** Click the **✎** (pencil) icon on a card to enter a new name.
+
+-   **Delete:** Click the **✖** icon on a card to permanently delete it. A confirmation will be required.
+
+### A Note on Voices
+
+The Text-to-Speech (TTS) feature uses the voices that are built directly into your operating system (like Windows or macOS) or your web browser (like Chrome or Edge). The list of available voices in the dropdown menu is provided by your device, not the app itself. This means the selection of voices and their quality can vary from one computer to another.
