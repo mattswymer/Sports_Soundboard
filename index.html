@@ -66,6 +66,11 @@
       .btn-playpause { background-color: #22c55e; }
       .btn-stop { background-color: #ef4444; }
 
+      /* Allow sound card titles to wrap */
+      .sound-card .title {
+        white-space: normal;
+      }
+
       /* Class for items being dragged */
       .dragging {
         opacity: 0.5;
@@ -117,6 +122,8 @@
         width: 500px;
         transform: scale(0.95);
         transition: transform 0.2s ease-in-out;
+        max-height: 85vh; /* MOBILE FIX: Limit height */
+        overflow-y: auto; /* MOBILE FIX: Enable scrolling */
       }
       .modal-overlay.visible .modal-content {
         transform: scale(1);
@@ -139,15 +146,15 @@
     <h1 class="text-3xl font-bold flex items-center gap-3">
       Sports Soundboard Pro
     </h1>
-        <div id="donationLinks" class="flex items-center gap-2 text-sm text-gray-400">
-          Like this app?
-          <a href="https://www.paypal.me/mattswymer84" target="_blank" title="PayPal">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/PayPal_2024_%28Icon%29.svg/250px-PayPal_2024_%28Icon%29.svg.png" alt="PayPal" class="h-6 w-auto" />
-          </a>
-          <a href="https://venmo.com/mattswymer" target="_blank" title="Venmo">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/1200px-Venmo_logo.png" alt="Venmo" class="h-6 w-auto" />
-          </a>
-        </div>
+    <div id="donationLinks" class="flex items-center gap-2 text-sm text-gray-400">
+      Like this app?
+      <a href="https://www.paypal.me/mattswymer84" target="_blank" title="PayPal">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/PayPal_2024_%28Icon%29.svg/250px-PayPal_2024_%28Icon%29.svg.png" alt="PayPal" class="h-6 w-auto" />
+      </a>
+      <a href="https://venmo.com/mattswymer" target="_blank" title="Venmo">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/1200px-Venmo_logo.png" alt="Venmo" class="h-6 w-auto" />
+      </a>
+    </div>
     <div class="flex flex-wrap items-center gap-6">
       <div class="flex items-center gap-3">
         <label for="fadeInSlider" class="text-sm shrink-0">Fade In (s)</label>
@@ -198,13 +205,15 @@
         <span id="annCount" class="text-xs bg-gray-700 px-2 py-0.5 rounded-md">0</span>
       </div>
       <div id="annCol" class="drop-zone relative p-4 min-h-[260px] border-2 border-dashed border-gray-700 rounded-2xl bg-gray-800/50">
-        <label for="annInput" class="sr-only">Add announcement sounds</label>
         <div class="drop-area pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-gray-400">
           <div class="text-3xl">＋</div>
           <div>Drop sounds here or click to import</div>
         </div>
       </div>
       <input id="annInput" type="file" accept="audio/*" multiple class="hidden" />
+      <footer class="mt-4">
+        <button class="add-sound-btn w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-3 rounded-xl transition-colors active:scale-95">＋ Add Sound / Import</button>
+      </footer>
     </section>
     <section>
       <div class="flex items-center gap-2 text-lg font-semibold mb-2">
@@ -212,13 +221,15 @@
         <span id="musicCount" class="text-xs bg-gray-700 px-2 py-0.5 rounded-md">0</span>
       </div>
       <div id="musicCol" class="drop-zone relative p-4 min-h-[260px] border-2 border-dashed border-gray-700 rounded-2xl bg-gray-800/50">
-        <label for="musicInput" class="sr-only">Add music sounds</label>
         <div class="drop-area pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-gray-400">
           <div class="text-3xl">＋</div>
           <div>Drop sounds here or click to import</div>
         </div>
       </div>
       <input id="musicInput" type="file" accept="audio/*" multiple class="hidden" />
+      <footer class="mt-4">
+        <button class="add-sound-btn w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-3 rounded-xl transition-colors active:scale-95">＋ Add Sound / Import</button>
+      </footer>
     </section>
   </main>
 
@@ -444,21 +455,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const createCard = async (cardData) => {
     const { name, blob, idbKey, text, voiceName, volume = 1.0, startTime = 0 } = cardData;
     const card = document.createElement('div');
-    card.className = 'sound-card group/card bg-gray-800 border border-gray-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-3 cursor-grab';
+    card.className = 'sound-card group/card bg-gray-800 border border-gray-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-3';
     card.draggable = true;
     card.dataset.idbKey = idbKey || null;
     card.dataset.type = text ? 'tts' : 'audio';
 
     // Card Header
     const header = document.createElement('div');
-    header.className = 'flex items-center gap-3';
+    header.className = 'flex items-start gap-3';
     header.innerHTML = `
-      <div class="text-gray-500 cursor-grab select-none">⋮⋮</div>
+      <div class="text-gray-500 cursor-grab select-none pt-2">⋮⋮</div>
       <button class="btn-playpause shrink-0 transition-transform active:scale-95" aria-label="Play">▶</button>
       <button class="btn-stop shrink-0 transition-transform active:scale-95" aria-label="Stop">⏹</button>
-      <div class="title font-semibold flex-1 truncate" title="${name}">${name}</div>
-      <button class="edit-btn text-gray-300 hover:text-white transition-transform active:scale-95" title="Rename">✎</button>
-      <button class="del-btn text-gray-300 hover:text-red-400 transition-transform active:scale-95" title="Delete">✖</button>
+      <div class="title font-semibold flex-1 min-w-0" title="${name}">${name}</div>
+      <button class="edit-btn text-gray-300 hover:text-white transition-transform active:scale-95 shrink-0" title="Rename">✎</button>
+      <button class="del-btn text-gray-300 hover:text-red-400 transition-transform active:scale-95 shrink-0" title="Delete">✖</button>
     `;
     card.appendChild(header);
 
@@ -584,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
               } catch (e) { console.error(`Failed to save ${key}`, e); }
           }
       };
-      
+
       volumeSlider.addEventListener('input', () => wavesurfer.setVolume(volumeSlider.value));
       volumeSlider.addEventListener('change', () => saveData('volume', parseFloat(volumeSlider.value)));
       startTimeInput.addEventListener('change', () => saveData('startTime', parseFloat(startTimeInput.value)));
@@ -769,7 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
     } catch (e) { return showMessage('Recording is not supported on this browser.'); }
-    
+
     audioChunks = [];
     mediaRecorder.ondataavailable = e => e.data.size > 0 && audioChunks.push(e.data);
     mediaRecorder.onstop = async () => {
@@ -823,6 +834,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modals
     alertModalCloseBtn.addEventListener('click', () => alertModal.classList.remove('visible'));
     helpModalCloseBtn.addEventListener('click', () => helpModal.classList.remove('visible'));
+    // MOBILE FIX: Close help modal when clicking overlay
+    helpModal.addEventListener('click', (e) => {
+      if (e.target === helpModal) {
+        helpModal.classList.remove('visible');
+      }
+    });
 
     // TTS & Recording
     previewBtn.addEventListener('click', () => handleTTSAction('preview'));
@@ -835,11 +852,18 @@ document.addEventListener('DOMContentLoaded', () => {
     recordBtn.addEventListener('pointerup', stopRecording);
     recordBtn.addEventListener('pointerleave', stopRecording);
 
-    // Drag & Drop Columns
+    // Columns and File Inputs
     columns.forEach(({ wrap, input }) => {
-      wrap.addEventListener('click', e => {
-        if (e.target === wrap || e.target.closest('.drop-area')) input.click();
+      const addBtn = wrap.parentElement.querySelector('.add-sound-btn');
+      [wrap, addBtn].forEach(el => {
+        el.addEventListener('click', e => {
+          if (e.target.closest('.sound-card')) return;
+          if (e.target === wrap || e.target.closest('.drop-area') || e.target === addBtn) {
+            input.click();
+          }
+        });
       });
+
       input.addEventListener('change', e => {
         if (e.target.files.length) {
           addFilesToColumn(e.target.files, wrap);
@@ -847,6 +871,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       });
 
+      // Drag and Drop
       wrap.addEventListener('dragenter', e => e.preventDefault());
       wrap.addEventListener('dragover', e => {
         e.preventDefault();
@@ -898,11 +923,14 @@ document.addEventListener('DOMContentLoaded', () => {
     fadeOutSlider.value = fadeOutTime;
     fadeInVal.textContent = fadeInTime.toFixed(1);
     fadeOutVal.textContent = fadeOutTime.toFixed(1);
+
+    // Add error handlers for donation images
     document.querySelectorAll('#donationLinks img').forEach(img => {
-  img.addEventListener('error', () => {
-    img.style.display = 'none';
-  });
-});
+      img.addEventListener('error', () => {
+        img.style.display = 'none';
+      });
+    });
+
     populateVoiceList();
     initializeEventListeners();
     await restoreFromDB();
