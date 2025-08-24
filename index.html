@@ -4,9 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sports Soundboard Pro</title>
-    <!-- Tailwind CSS for rapid UI development -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- WaveSurfer.js for audio waveform visualization -->
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <style>
       /* Using Inter as a clean, modern font */
@@ -137,14 +135,10 @@
 </head>
 <body class="bg-gray-900 text-white p-6">
 
-  <!-- ================================================= -->
-  <!-- HEADER & GLOBAL CONTROLS -->
-  <!-- ================================================= -->
   <header class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
     <h1 class="text-3xl font-bold flex items-center gap-3">
       <span>⚾</span> Baseball Soundboard Pro
     </h1>
-    <!-- Donation Links -->
     <div class="flex items-center gap-2 text-sm text-gray-400">
       Like this app?
       <a href="https://www.paypal.me/mattswymer84" target="_blank" title="PayPal">
@@ -154,7 +148,6 @@
         <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/1200px-Venmo_logo.png" onerror="this.style.display='none'" alt="Venmo" class="h-6 w-auto" />
       </a>
     </div>
-    <!-- Fade Controls -->
     <div class="flex flex-wrap items-center gap-6">
       <div class="flex items-center gap-3">
         <label for="fadeInSlider" class="text-sm shrink-0">Fade In (s)</label>
@@ -170,18 +163,13 @@
     </div>
   </header>
 
-  <!-- ================================================= -->
-  <!-- SOUND GENERATION SECTION -->
-  <!-- ================================================= -->
   <section class="mb-6">
     <div class="bg-gray-800 border border-gray-700 rounded-2xl p-4">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-        <!-- TTS Input -->
         <div class="lg:col-span-6">
           <label for="ttsText" class="sr-only">Text to generate speech from</label>
           <input id="ttsText" type="text" placeholder="Now batting, number 42, Jackie Robinson..." class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none" />
         </div>
-        <!-- TTS Controls -->
         <div class="lg:col-span-5 flex flex-col sm:flex-row gap-2">
           <label for="voiceSelect" class="sr-only">Select voice</label>
           <select id="voiceSelect" class="bg-gray-900 border border-gray-600 rounded-xl px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm min-w-0 flex-1">
@@ -192,7 +180,6 @@
             <button id="generateBtn" class="bg-green-600 hover:bg-green-500 active:bg-green-700 px-3 py-2 rounded-xl text-sm font-semibold shadow transition-colors whitespace-nowrap active:scale-95">➕ Add</button>
           </div>
         </div>
-        <!-- Recording Button -->
         <div class="lg:col-span-1 flex justify-center lg:justify-end">
           <div class="relative">
             <button id="recordBtn" class="w-14 h-14 bg-gray-700 hover:bg-gray-600 border-2 border-gray-600 rounded-full flex items-center justify-center text-xl transition-all duration-200 select-none active:scale-95" title="Hold to record">🎙️</button>
@@ -203,11 +190,7 @@
     </div>
   </section>
 
-  <!-- ================================================= -->
-  <!-- SOUNDBOARD COLUMNS -->
-  <!-- ================================================= -->
   <main class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <!-- Announcements Column -->
     <section>
       <div class="flex items-center gap-2 text-lg font-semibold mb-2">
         <span>📢 Announcements</span>
@@ -222,7 +205,6 @@
       </div>
       <input id="annInput" type="file" accept="audio/*" multiple class="hidden" />
     </section>
-    <!-- Music Column -->
     <section>
       <div class="flex items-center gap-2 text-lg font-semibold mb-2">
         <span>🎵 Music</span>
@@ -239,9 +221,6 @@
     </section>
   </main>
 
-  <!-- ================================================= -->
-  <!-- MODAL DIALOG -->
-  <!-- ================================================= -->
   <div id="modal" class="modal-overlay">
     <div class="modal-content">
       <h3 class="text-xl font-bold mb-4">Message</h3>
@@ -422,7 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
    * @returns {Promise<HTMLElement>} The created card element.
    */
   const createCard = async (cardData) => {
-    const { name, blob, idbKey, text, voiceName, volume = 1.0 } = cardData;
+    const { name, blob, idbKey, text, voiceName, volume = 1.0, startTime = 0 } = cardData;
     const card = document.createElement('div');
     card.className = 'sound-card group/card bg-gray-800 border border-gray-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-3 cursor-grab';
     card.draggable = true;
@@ -460,10 +439,20 @@ document.addEventListener('DOMContentLoaded', () => {
       togglesWrap.className = 'flex items-center gap-4';
       togglesWrap.append(fadeInToggle.wrap, fadeOutToggle.wrap);
 
+      const controlsWrap = document.createElement('div');
+      controlsWrap.className = 'flex items-center gap-4';
+
       const volumeWrap = document.createElement('div');
-      volumeWrap.className = 'flex items-center gap-2';
+      volumeWrap.className = 'flex items-center gap-2 flex-1';
       volumeWrap.innerHTML = `<span class="text-xs w-12">Volume</span><input type="range" min="0" max="1" step="0.01" value="${volume}" class="w-full">`;
       const volumeSlider = $('input', volumeWrap);
+
+      const startTimeWrap = document.createElement('div');
+      startTimeWrap.className = 'flex items-center gap-2';
+      startTimeWrap.innerHTML = `<label class="text-xs" for="startTime-${idbKey}">Start (s)</label><input type="number" id="startTime-${idbKey}" value="${startTime}" min="0" step="0.1" class="w-20 bg-gray-700 rounded px-2 py-1 text-xs">`;
+      const startTimeInput = $('input', startTimeWrap);
+
+      controlsWrap.append(volumeWrap, startTimeWrap);
 
       const progressContainer = document.createElement('div');
       progressContainer.innerHTML = `
@@ -476,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const curLbl = $('.cur', progressContainer);
       const durLbl = $('.dur', progressContainer);
 
-      details.append(togglesWrap, volumeWrap, progressContainer);
+      details.append(togglesWrap, controlsWrap, progressContainer);
       card.appendChild(details);
 
       // --- WaveSurfer Initialization ---
@@ -514,8 +503,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // --- Audio Control Event Listeners ---
       playBtn.addEventListener('click', () => {
-          wavesurfer.setOptions({ fadeIn: fadeInToggle.input.checked ? (fadeInTime * 1000) : 0 });
-          wavesurfer.playPause();
+          if (wavesurfer.isPlaying()) {
+            wavesurfer.pause();
+          } else {
+            const start = parseFloat(startTimeInput.value) || 0;
+            wavesurfer.setOptions({ fadeIn: fadeInToggle.input.checked ? (fadeInTime * 1000) : 0 });
+            wavesurfer.play(start);
+          }
       });
 
       stopBtn.addEventListener('click', () => {
@@ -540,20 +534,26 @@ document.addEventListener('DOMContentLoaded', () => {
           }
       });
 
-      volumeSlider.addEventListener('input', async () => {
-          wavesurfer.setVolume(volumeSlider.value);
-          if (card.dataset.idbKey) {
-              try {
-                  const rec = await idb.get(card.dataset.idbKey);
-                  if (rec) {
-                      rec.volume = parseFloat(volumeSlider.value);
-                      await idb.set(card.dataset.idbKey, rec);
-                  }
-              } catch (e) {
-                  console.error("Failed to save volume", e);
-              }
-          }
+      const saveData = async (key, value) => {
+        if (card.dataset.idbKey) {
+            try {
+                const rec = await idb.get(card.dataset.idbKey);
+                if (rec) {
+                    rec[key] = value;
+                    await idb.set(card.dataset.idbKey, rec);
+                }
+            } catch (e) {
+                console.error(`Failed to save ${key}`, e);
+            }
+        }
+      };
+
+      volumeSlider.addEventListener('input', () => {
+        wavesurfer.setVolume(volumeSlider.value);
       });
+      volumeSlider.addEventListener('change', () => saveData('volume', parseFloat(volumeSlider.value)));
+
+      startTimeInput.addEventListener('change', () => saveData('startTime', parseFloat(startTimeInput.value)));
 
     } else { // --- TTS Card Logic ---
       card.dataset.text = text;
@@ -650,7 +650,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const arrayBuffer = await file.arrayBuffer();
         const blob = new Blob([arrayBuffer], { type: file.type });
         const col = columnEl.id === 'annCol' ? 'ann' : 'music';
-        const record = { name: file.name, buffer: arrayBuffer, type: file.type, col, volume: 1.0 };
+        const record = { name: file.name, buffer: arrayBuffer, type: file.type, col, volume: 1.0, startTime: 0 };
         await idb.set(file.name, record);
         const card = await createCard({
           name: file.name.replace(/\.[^/.]+$/, ''),
