@@ -137,17 +137,17 @@
 
   <header class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
     <h1 class="text-3xl font-bold flex items-center gap-3">
-      <span>⚾</span> Baseball Soundboard Pro
+      Sports Soundboard Pro
     </h1>
-    <div class="flex items-center gap-2 text-sm text-gray-400">
-      Like this app?
-      <a href="https://www.paypal.me/mattswymer84" target="_blank" title="PayPal">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/PayPal_2024_%28Icon%29.svg/250px-PayPal_2024_%28Icon%29.svg.png" onerror="this.style.display='none'" alt="PayPal" class="h-6 w-auto" />
-      </a>
-      <a href="https://venmo.com/mattswymer" target="_blank" title="Venmo">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/1200px-Venmo_logo.png" onerror="this.style.display='none'" alt="Venmo" class="h-6 w-auto" />
-      </a>
-    </div>
+        <div id="donationLinks" class="flex items-center gap-2 text-sm text-gray-400">
+          Like this app?
+          <a href="https://www.paypal.me/mattswymer84" target="_blank" title="PayPal">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/PayPal_2024_%28Icon%29.svg/250px-PayPal_2024_%28Icon%29.svg.png" alt="PayPal" class="h-6 w-auto" />
+          </a>
+          <a href="https://venmo.com/mattswymer" target="_blank" title="Venmo">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/1200px-Venmo_logo.png" alt="Venmo" class="h-6 w-auto" />
+          </a>
+        </div>
     <div class="flex flex-wrap items-center gap-6">
       <div class="flex items-center gap-3">
         <label for="fadeInSlider" class="text-sm shrink-0">Fade In (s)</label>
@@ -898,7 +898,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fadeOutSlider.value = fadeOutTime;
     fadeInVal.textContent = fadeInTime.toFixed(1);
     fadeOutVal.textContent = fadeOutTime.toFixed(1);
-
+    document.querySelectorAll('#donationLinks img').forEach(img => {
+  img.addEventListener('error', () => {
+    img.style.display = 'none';
+  });
+});
     populateVoiceList();
     initializeEventListeners();
     await restoreFromDB();
