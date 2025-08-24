@@ -1,4 +1,4 @@
-Sports Soundboard Pro
+Sports Soundboard
 =======================
 
 A professional, browser-based soundboard designed for live sports events, podcasts, or any situation where you need quick access to high-quality audio clips, announcements, and music.
