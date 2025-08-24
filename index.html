@@ -114,7 +114,7 @@
         border-radius: 1rem;
         color: white;
         max-width: 90%;
-        width: 400px;
+        width: 500px;
         transform: scale(0.95);
         transition: transform 0.2s ease-in-out;
       }
@@ -160,6 +160,7 @@
         <span id="fadeOutVal" class="w-8 text-right font-mono">2.0</span>
       </div>
       <button id="fadeAllBtn" class="bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-2 rounded-xl font-semibold shadow transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Fade Out All</button>
+      <button id="helpBtn" class="bg-gray-600 hover:bg-gray-500 w-10 h-10 rounded-full text-xl font-bold flex items-center justify-center transition-transform active:scale-95" title="Help">?</button>
     </div>
   </header>
 
@@ -221,14 +222,50 @@
     </section>
   </main>
 
-  <div id="modal" class="modal-overlay">
+  <div id="alertModal" class="modal-overlay">
     <div class="modal-content">
       <h3 class="text-xl font-bold mb-4">Message</h3>
-      <p id="modalMessage"></p>
+      <p id="alertMessage"></p>
       <div class="mt-6 text-right">
-        <button id="modalCloseBtn" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-2 rounded-xl font-semibold shadow active:scale-95">OK</button>
+        <button id="alertModalCloseBtn" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-2 rounded-xl font-semibold shadow active:scale-95">OK</button>
       </div>
     </div>
+  </div>
+
+  <div id="helpModal" class="modal-overlay">
+      <div class="modal-content">
+          <h3 class="text-2xl font-bold mb-4">Welcome to Sports Soundboard Pro!</h3>
+          <div class="space-y-4 text-gray-300">
+              <p>This app is designed for playing audio at live events directly from your device, ensuring reliability even with poor cell service or crowded networks.</p>
+
+              <div>
+                  <h4 class="font-semibold text-lg mb-2 text-white">Getting Started</h4>
+                  <ol class="list-decimal list-inside space-y-2">
+                      <li><strong>Download First:</strong> Before you begin, download all the announcements and music you plan to use onto the computer, tablet, or phone you'll be using at the event.</li>
+                      <li>
+                          <strong>Add Your Sounds:</strong> You have three ways to add audio to the board:
+                          <ul class="list-disc list-inside ml-4 mt-1">
+                              <li><strong>Upload:</strong> Drag and drop your downloaded audio files directly into the "Announcements" or "Music" columns.</li>
+                              <li><strong>Record:</strong> Click and hold the 🎙️ button to record a quick announcement directly from your microphone.</li>
+                              <li><strong>Text-to-Speech (TTS):</strong> Type a phrase, choose a voice, and click "Add" to generate a spoken announcement.</li>
+                          </ul>
+                      </li>
+                      <li><strong>Customize Each Sound:</strong> Every sound card has its own controls to set a custom <strong>Start Time</strong>, adjust the <strong>Volume</strong>, and toggle <strong>Fade In</strong> or <strong>Fade Out</strong> effects.</li>
+                  </ol>
+              </div>
+
+              <div>
+                  <h4 class="font-semibold text-lg mb-2 text-white">Good to Know</h4>
+                  <ul class="list-disc list-inside space-y-2">
+                      <li><strong>Everything is Saved Locally:</strong> All your sounds are automatically saved in your browser, so your complete soundboard will be ready the next time you open the app. Please note that this setup is saved <em>only</em> to the specific device and browser you use and will not transfer to other devices.</li>
+                      <li><strong>TTS Voices:</strong> The list of available text-to-speech voices is provided by your browser and operating system. The selection may vary on different devices.</li>
+                  </ul>
+              </div>
+          </div>
+          <div class="mt-6 text-right">
+              <button id="helpModalCloseBtn" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-2 rounded-xl font-semibold shadow active:scale-95">Got It</button>
+          </div>
+      </div>
   </div>
 
 <script>
@@ -253,6 +290,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const fadeInVal = $('#fadeInVal');
   const fadeOutVal = $('#fadeOutVal');
   const fadeAllBtn = $('#fadeAllBtn');
+  const helpBtn = $('#helpBtn');
   const ttsText = $('#ttsText');
   const voiceSelect = $('#voiceSelect');
   const previewBtn = $('#previewBtn');
@@ -265,9 +303,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const musicInput = $('#musicInput');
   const annCount = $('#annCount');
   const musicCount = $('#musicCount');
-  const modal = $('#modal');
-  const modalMessage = $('#modalMessage');
-  const modalCloseBtn = $('#modalCloseBtn');
+
+  // Modals
+  const alertModal = $('#alertModal');
+  const alertMessage = $('#alertMessage');
+  const alertModalCloseBtn = $('#alertModalCloseBtn');
+  const helpModal = $('#helpModal');
+  const helpModalCloseBtn = $('#helpModalCloseBtn');
+
 
   const columns = [
     { wrap: annCol, input: annInput },
@@ -302,17 +345,15 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /**
-   * Displays a message in a modal dialog.
+   * Displays a message in the alert modal.
    * @param {string} message - The message to display.
    */
   const showMessage = (message) => {
-    modalMessage.textContent = message;
-    modal.classList.add('visible');
-    modalCloseBtn.onclick = () => modal.classList.remove('visible');
+    alertMessage.textContent = message;
+    alertModal.classList.add('visible');
   };
 
   // --- IndexedDB Wrapper ---
-  // A set of promise-based functions to simplify IndexedDB operations.
   const idb = {
     open: () => new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -396,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /**
-   * Creates a sound card element. This is the main UI component for a sound.
+   * Creates a sound card element.
    * @param {object} cardData - Data for the card (name, blob, idbKey, etc.).
    * @returns {Promise<HTMLElement>} The created card element.
    */
@@ -408,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.dataset.idbKey = idbKey || null;
     card.dataset.type = text ? 'tts' : 'audio';
 
-    // --- Card Header ---
+    // Card Header
     const header = document.createElement('div');
     header.className = 'flex items-center gap-3';
     header.innerHTML = `
@@ -427,9 +468,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const editBtn = $('.edit-btn', header);
     const delBtn = $('.del-btn', header);
 
-    // --- Card Logic (Audio vs. TTS) ---
+    // Card Logic (Audio vs. TTS)
     if (card.dataset.type === 'audio') {
-      // --- Audio Card Details (Waveform, Volume, etc.) ---
       const details = document.createElement('div');
       details.className = 'pl-14 flex flex-col gap-3';
 
@@ -468,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
       details.append(togglesWrap, controlsWrap, progressContainer);
       card.appendChild(details);
 
-      // --- WaveSurfer Initialization ---
+      // WaveSurfer Initialization
       const wavesurfer = WaveSurfer.create({
           container: waveformEl,
           waveColor: '#6b7280',
@@ -479,11 +519,10 @@ document.addEventListener('DOMContentLoaded', () => {
           barWidth: 2,
           barRadius: 2,
           url: URL.createObjectURL(blob),
-          fadeIn: fadeInToggle.input.checked ? (fadeInTime * 1000) : 0,
       });
       activeAudios.set(card, wavesurfer);
 
-      // --- WaveSurfer Event Handlers ---
+      // WaveSurfer Event Handlers
       wavesurfer.on('ready', (duration) => {
           durLbl.textContent = formatTime(duration);
           wavesurfer.setVolume(volumeSlider.value);
@@ -499,16 +538,16 @@ document.addEventListener('DOMContentLoaded', () => {
           playBtn.setAttribute('aria-label', 'Play');
           card.classList.remove('ring-2', 'ring-blue-500', 'bg-gray-700/50');
       });
-      wavesurfer.on('finish', () => wavesurfer.emit('pause')); // Reuse pause styling
+      wavesurfer.on('finish', () => wavesurfer.emit('pause'));
 
-      // --- Audio Control Event Listeners ---
+      // Audio Control Event Listeners
       playBtn.addEventListener('click', () => {
           if (wavesurfer.isPlaying()) {
-            wavesurfer.pause();
+              wavesurfer.pause();
           } else {
-            const start = parseFloat(startTimeInput.value) || 0;
-            wavesurfer.setOptions({ fadeIn: fadeInToggle.input.checked ? (fadeInTime * 1000) : 0 });
-            wavesurfer.play(start);
+              const start = parseFloat(startTimeInput.value) || 0;
+              wavesurfer.setOptions({ fadeIn: fadeInToggle.input.checked ? (fadeInTime * 1000) : 0 });
+              wavesurfer.play(start);
           }
       });
 
@@ -525,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
                       requestAnimationFrame(fade);
                   } else {
                       wavesurfer.stop();
-                      wavesurfer.setVolume(currentVolume); // Restore for next play
+                      wavesurfer.setVolume(currentVolume);
                   }
               };
               requestAnimationFrame(fade);
@@ -535,27 +574,22 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const saveData = async (key, value) => {
-        if (card.dataset.idbKey) {
-            try {
-                const rec = await idb.get(card.dataset.idbKey);
-                if (rec) {
-                    rec[key] = value;
-                    await idb.set(card.dataset.idbKey, rec);
-                }
-            } catch (e) {
-                console.error(`Failed to save ${key}`, e);
-            }
-        }
+          if (card.dataset.idbKey) {
+              try {
+                  const rec = await idb.get(card.dataset.idbKey);
+                  if (rec) {
+                      rec[key] = value;
+                      await idb.set(card.dataset.idbKey, rec);
+                  }
+              } catch (e) { console.error(`Failed to save ${key}`, e); }
+          }
       };
-
-      volumeSlider.addEventListener('input', () => {
-        wavesurfer.setVolume(volumeSlider.value);
-      });
+      
+      volumeSlider.addEventListener('input', () => wavesurfer.setVolume(volumeSlider.value));
       volumeSlider.addEventListener('change', () => saveData('volume', parseFloat(volumeSlider.value)));
-
       startTimeInput.addEventListener('change', () => saveData('startTime', parseFloat(startTimeInput.value)));
 
-    } else { // --- TTS Card Logic ---
+    } else { // TTS Card Logic
       card.dataset.text = text;
       card.dataset.voice = voiceName;
 
@@ -578,48 +612,37 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // --- Common Card Event Listeners (Delete, Edit, Drag) ---
+    // Common Card Event Listeners
     delBtn.addEventListener('click', async () => {
       if (!confirm('Are you sure you want to delete this sound?')) return;
       if (card.dataset.type === 'audio') {
         const ws = activeAudios.get(card);
-        if (ws) {
-          ws.destroy();
-          activeAudios.delete(card);
-        }
+        if (ws) { ws.destroy(); activeAudios.delete(card); }
       } else {
         window.speechSynthesis.cancel();
       }
       card.remove();
       updateCounts();
       if (card.dataset.idbKey) {
-        try {
-          await idb.delete(card.dataset.idbKey);
-        } catch (e) {
-          console.error("Failed to delete from DB", e);
-          showMessage("Could not delete sound from database.");
-        }
+        try { await idb.delete(card.dataset.idbKey); }
+        catch (e) { showMessage("Could not delete sound from database."); }
       }
     });
 
     editBtn.addEventListener('click', async () => {
-      const currentName = titleEl.textContent;
-      const newName = prompt('Enter a new name for the sound:', currentName);
-      if (newName && newName.trim() && newName.trim() !== currentName) {
+      const newName = prompt('Enter a new name:', titleEl.textContent);
+      if (newName && newName.trim() && newName.trim() !== titleEl.textContent) {
         const finalName = newName.trim();
         titleEl.textContent = finalName;
         titleEl.title = finalName;
         if (card.dataset.idbKey) {
-          try {
-            const rec = await idb.get(card.dataset.idbKey);
-            if (rec) {
-              rec.name = finalName;
-              await idb.set(card.dataset.idbKey, rec);
-            }
-          } catch (e) {
-            console.error("Failed to rename in DB", e);
-            showMessage("Could not save the new name.");
-          }
+            try {
+                const rec = await idb.get(card.dataset.idbKey);
+                if (rec) {
+                    rec.name = finalName;
+                    await idb.set(card.dataset.idbKey, rec);
+                }
+            } catch (e) { showMessage("Could not save the new name."); }
         }
       }
     });
@@ -638,11 +661,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // D. DATA & FILE HANDLING
   // ===================================================================
 
-  /**
-   * Processes and adds dropped/selected audio files to a column.
-   * @param {FileList} files - The files to add.
-   * @param {HTMLElement} columnEl - The target column element.
-   */
   const addFilesToColumn = async (files, columnEl) => {
     for (const file of files) {
       if (!file.type.startsWith('audio/')) continue;
@@ -659,16 +677,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         columnEl.appendChild(card);
       } catch (e) {
-        console.error(`Failed to process file ${file.name}:`, e);
         showMessage(`Could not process or save the file: ${file.name}`);
       }
     }
     updateCounts();
   };
 
-  /**
-   * Restores all sounds from IndexedDB on application load.
-   */
   const restoreFromDB = async () => {
     try {
       const keys = await idb.getAllKeys();
@@ -688,7 +702,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       updateCounts();
     } catch (e) {
-      console.error("Failed to restore from DB:", e);
       showMessage("Could not restore saved sounds from the database.");
     }
   };
@@ -698,7 +711,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // E. FEATURE MODULES (TTS, Recording)
   // ===================================================================
 
-  // --- Text-to-Speech (TTS) ---
   const populateVoiceList = () => {
     const voices = window.speechSynthesis.getVoices();
     voiceSelect.innerHTML = '<option value="">Select a voice...</option>';
@@ -735,14 +747,10 @@ document.addEventListener('DOMContentLoaded', () => {
         annCol.appendChild(card);
         updateCounts();
         await idb.set(idbKey, cardData);
-      } catch (e) {
-        console.error("Failed to create TTS card:", e);
-        showMessage("Could not create the TTS sound card.");
-      }
+      } catch (e) { showMessage("Could not create the TTS sound card."); }
     }
   };
 
-  // --- Microphone Recording ---
   const getMicrophoneStream = async () => {
     if (microphoneStream) return microphoneStream;
     try {
@@ -759,25 +767,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const stream = await getMicrophoneStream();
     if (isRecording || !stream) return;
     try {
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
-      mediaRecorder = new MediaRecorder(stream, { mimeType });
-    } catch (e) {
-      console.error('MediaRecorder not supported:', e);
-      return showMessage('Recording is not supported on this browser.');
-    }
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+    } catch (e) { return showMessage('Recording is not supported on this browser.'); }
+    
     audioChunks = [];
     mediaRecorder.ondataavailable = e => e.data.size > 0 && audioChunks.push(e.data);
     mediaRecorder.onstop = async () => {
       try {
-        const mimeType = audioChunks[0]?.type || 'audio/webm';
-        const audioBlob = new Blob(audioChunks, { type: mimeType });
-        const fileName = `Recording_${Date.now()}.${mimeType.split('/')[1]?.split(';')[0] || 'webm'}`;
-        const arrayBuffer = await audioBlob.arrayBuffer();
-        await addFilesToColumn([new File([audioBlob], fileName, { type: mimeType })], annCol);
-      } catch (e) {
-        console.error("Failed to save recording:", e);
-        showMessage("Could not save the new recording.");
-      }
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const fileName = `Recording_${Date.now()}.webm`;
+        await addFilesToColumn([new File([audioBlob], fileName, { type: 'audio/webm' })], annCol);
+      } catch (e) { showMessage("Could not save the new recording."); }
     };
     mediaRecorder.start();
     isRecording = true;
@@ -802,11 +802,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // F. EVENT LISTENERS & INITIALIZATION
   // ===================================================================
 
-  /**
-   * Attaches all primary event listeners for the application.
-   */
   const initializeEventListeners = () => {
-    // --- Global Controls ---
+    // Global Controls
     fadeInSlider.addEventListener('input', e => {
       fadeInTime = parseFloat(e.target.value);
       fadeInVal.textContent = fadeInTime.toFixed(1);
@@ -821,8 +818,13 @@ document.addEventListener('DOMContentLoaded', () => {
       window.speechSynthesis.cancel();
       activeAudios.forEach((ws, card) => card.querySelector('.btn-stop')?.click());
     });
+    helpBtn.addEventListener('click', () => helpModal.classList.add('visible'));
 
-    // --- TTS & Recording ---
+    // Modals
+    alertModalCloseBtn.addEventListener('click', () => alertModal.classList.remove('visible'));
+    helpModalCloseBtn.addEventListener('click', () => helpModal.classList.remove('visible'));
+
+    // TTS & Recording
     previewBtn.addEventListener('click', () => handleTTSAction('preview'));
     generateBtn.addEventListener('click', () => handleTTSAction('add'));
     voiceSelect.addEventListener('change', () => localStorage.setItem('lastSelectedVoice', voiceSelect.value));
@@ -831,9 +833,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     recordBtn.addEventListener('pointerdown', startRecording);
     recordBtn.addEventListener('pointerup', stopRecording);
-    recordBtn.addEventListener('pointerleave', stopRecording); // Stop if pointer leaves button area
+    recordBtn.addEventListener('pointerleave', stopRecording);
 
-    // --- Drag & Drop Columns ---
+    // Drag & Drop Columns
     columns.forEach(({ wrap, input }) => {
       wrap.addEventListener('click', e => {
         if (e.target === wrap || e.target.closest('.drop-area')) input.click();
@@ -841,11 +843,10 @@ document.addEventListener('DOMContentLoaded', () => {
       input.addEventListener('change', e => {
         if (e.target.files.length) {
           addFilesToColumn(e.target.files, wrap);
-          input.value = ''; // Reset for next selection
+          input.value = '';
         }
       });
 
-      // Drag events for files and reordering cards
       wrap.addEventListener('dragenter', e => e.preventDefault());
       wrap.addEventListener('dragover', e => {
         e.preventDefault();
@@ -862,7 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         wrap.classList.remove('drag-over');
         const draggingCard = $('.dragging');
-        if (draggingCard) { // Reordering a card
+        if (draggingCard) {
           if (draggingCard.dataset.idbKey) {
             try {
               const rec = await idb.get(draggingCard.dataset.idbKey);
@@ -870,12 +871,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 rec.col = wrap.id === 'annCol' ? 'ann' : 'music';
                 await idb.set(draggingCard.dataset.idbKey, rec);
               }
-            } catch (err) {
-              console.error("Failed to update column in DB", err);
-              showMessage("Could not save the new location of the sound.");
-            }
+            } catch (err) { showMessage("Could not save the new location of the sound."); }
           }
-        } else if (e.dataTransfer.files.length) { // Dropping files
+        } else if (e.dataTransfer.files.length) {
           await addFilesToColumn(e.dataTransfer.files, wrap);
         }
         updateCounts();
@@ -883,25 +881,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  /**
-   * Finds the sibling element to insert a dragged element before.
-   * @param {HTMLElement} container - The container being dragged over.
-   * @param {number} y - The clientY position of the mouse.
-   * @returns {HTMLElement|null} The element to insert before, or null to append.
-   */
   const getDragAfterElement = (container, y) => {
     const draggableElements = [...container.querySelectorAll('.sound-card:not(.dragging)')];
-    const result = draggableElements.reduce((closest, child) => {
+    return draggableElements.reduce((closest, child) => {
       const box = child.getBoundingClientRect();
       const offset = y - box.top - box.height / 2;
       return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
-    }, { offset: Number.NEGATIVE_INFINITY });
-    return result.element;
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
   };
 
-  /**
-   * Main application initialization function.
-   */
   const initializeApp = async () => {
     const settings = loadSettings();
     fadeInTime = settings.fadeIn ?? 2.0;
@@ -915,7 +903,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
     await restoreFromDB();
 
-    // Register service worker for potential offline capabilities
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./service-worker.js').catch(err => {
         console.error('Service Worker registration failed:', err);
@@ -923,9 +910,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // --- Start the Application ---
   initializeApp();
-
 });
 </script>
 </body>
