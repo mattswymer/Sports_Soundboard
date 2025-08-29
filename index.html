@@ -51,16 +51,16 @@
         transform: translateX(18px);
       }
 
-      /* Styling for play/pause/stop buttons */
+      /* Styling for play/pause/stop buttons (Compact) */
       .btn-playpause, .btn-stop {
         color: white;
         border-radius: 9999px;
-        width: 40px;
-        height: 40px;
+        width: 32px;
+        height: 32px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 18px;
+        font-size: 14px;
         box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
       }
       .btn-playpause { background-color: #22c55e; }
@@ -77,9 +77,9 @@
         border: 2px solid #3b82f6;
       }
 
-      /* Waveform styling */
+      /* Waveform styling (Compact) */
       .waveform-container {
-        height: 50px;
+        height: 40px;
         cursor: pointer;
       }
 
@@ -455,14 +455,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const createCard = async (cardData) => {
     const { name, blob, idbKey, text, voiceName, volume = 1.0, startTime = 0 } = cardData;
     const card = document.createElement('div');
-    card.className = 'sound-card group/card bg-gray-800 border border-gray-700 rounded-2xl p-3 mb-3 shadow flex flex-col gap-3';
+    // MODIFIED: Compact card styling
+    card.className = 'sound-card group/card bg-gray-800 border border-gray-700 rounded-2xl p-2 mb-2 shadow flex flex-col gap-2';
     card.draggable = true;
     card.dataset.idbKey = idbKey || null;
     card.dataset.type = text ? 'tts' : 'audio';
 
     // Card Header
     const header = document.createElement('div');
-    header.className = 'flex items-start gap-3';
+    // MODIFIED: Compact header styling
+    header.className = 'flex items-center gap-2';
     header.innerHTML = `
       <div class="text-gray-500 cursor-grab select-none pt-2">⋮⋮</div>
       <button class="btn-playpause shrink-0 transition-transform active:scale-95" aria-label="Play">▶</button>
@@ -482,7 +484,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Card Logic (Audio vs. TTS)
     if (card.dataset.type === 'audio') {
       const details = document.createElement('div');
-      details.className = 'pl-14 flex flex-col gap-3';
+      // MODIFIED: Compact details section styling
+      details.className = 'pl-10 flex flex-col gap-2';
 
       const fadeInToggle = createToggle('Fade In');
       const fadeOutToggle = createToggle('Fade Out');
@@ -524,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
           container: waveformEl,
           waveColor: '#6b7280',
           progressColor: '#3b82f6',
-          height: 50,
+          height: 40, // Corresponds to compact CSS height
           cursorWidth: 1,
           cursorColor: '#f87171',
           barWidth: 2,
@@ -553,13 +556,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Audio Control Event Listeners
       playBtn.addEventListener('click', () => {
+          // If the track is currently playing, pause it.
           if (wavesurfer.isPlaying()) {
               wavesurfer.pause();
               return;
           }
-
-          const startSeconds = parseFloat(startTimeInput.value) || 0;
+          
+          // MODIFIED: If track is paused, simply resume playback.
+          const currentTime = wavesurfer.getCurrentTime();
           const duration = wavesurfer.getDuration();
+          if (currentTime > 0 && currentTime < duration) {
+              wavesurfer.play();
+              return;
+          }
+
+          // Otherwise, start from the beginning or the specified start time.
+          const startSeconds = parseFloat(startTimeInput.value) || 0;
           if (startSeconds > 0 && duration > 0) {
               const progress = startSeconds / duration;
               wavesurfer.seekTo(progress);
