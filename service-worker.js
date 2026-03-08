@@ -1,111 +1,87 @@
 /**
  * @file service-worker.js
- * @description This service worker handles caching of application assets for offline functionality.
- * It uses a "cache-first, then network" strategy.
+ * @description Cache-first strategy with offline fallback.
+ *   - Caches app shell + CDN assets on install (F1)
+ *   - clients.claim() for immediate control (F2)
+ *   - Offline fallback page returned on navigation failure (F8)
  */
 
-// ===================================================================
-// A. CONFIGURATION
-// ===================================================================
+const CACHE_VERSION = 3;
+const CACHE_NAME = `soundboard-cache-v${CACHE_VERSION}`;
 
-/**
- * @const {string} CACHE_NAME
- * The name of the cache storage. Using a version number (e.g., 'v2')
- * is a best practice. When you update your app's assets, you can
- * increment this version number to ensure the new service worker
- * installs and replaces the old one, and old caches are cleaned up.
- */
-const CACHE_NAME = 'soundboard-cache-v2';
-
-/**
- * @const {string[]} ASSETS_TO_CACHE
- * An array of asset URLs to be pre-cached when the service worker is installed.
- * This ensures that the core application shell is available offline immediately.
- */
 const ASSETS_TO_CACHE = [
-  './',           // The root of the application (index.html).
-  './index.html', // Explicitly cache the main HTML file.
-  // Add paths to any other critical local assets like CSS, JS, or images here.
-  // Example: './css/style.css', './js/main.js'
+  './',
+  './index.html',
+  'https://cdn.tailwindcss.com',
+  'https://unpkg.com/wavesurfer.js@7',
+  'https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Mono:wght@400;500&display=swap',
 ];
 
+const OFFLINE_FALLBACK = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sports Soundboard – Offline</title>
+  <style>
+    body { background: #0d1117; color: #f0f6fc; font-family: sans-serif;
+           display: flex; flex-direction: column; align-items: center;
+           justify-content: center; min-height: 100vh; margin: 0; gap: 1rem; }
+    h1  { font-size: 2rem; margin: 0; }
+    p   { color: #8b949e; }
+    button { background: #238636; color: #fff; border: none; padding: .75rem 2rem;
+             border-radius: .5rem; cursor: pointer; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <h1>📡 You're Offline</h1>
+  <p>The soundboard couldn't load. Check your connection and try again.</p>
+  <button onclick="location.reload()">Retry</button>
+</body>
+</html>`;
 
-// ===================================================================
-// B. SERVICE WORKER LIFECYCLE EVENTS
-// ===================================================================
-
-/**
- * The 'install' event is fired when the service worker is first registered.
- * Its primary job is to open the cache and pre-cache all the essential app assets.
- */
+// ── Install: pre-cache everything ───────────────────────────────────────────
 self.addEventListener('install', event => {
-  console.log('[Service Worker] Install event fired.');
-  // waitUntil() ensures the service worker won't be considered 'installed'
-  // until the code inside has successfully completed.
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('[Service Worker] Caching application shell assets.');
-        return cache.addAll(ASSETS_TO_CACHE);
-      })
-      .catch(error => {
-        console.error('[Service Worker] Failed to cache assets during install:', error);
-      })
+      .then(cache => cache.addAll(ASSETS_TO_CACHE))
+      .then(() => self.skipWaiting())
+      .catch(err => console.error('[SW] Install cache failed:', err))
   );
 });
 
-/**
- * The 'activate' event is fired after the 'install' event and when the
- * service worker takes control of the page. This is the ideal place to
- * clean up old, unused caches to save storage space and prevent conflicts.
- */
+// ── Activate: purge old caches + claim clients immediately (F2) ──────────────
 self.addEventListener('activate', event => {
-  console.log('[Service Worker] Activate event fired.');
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          // If a cache's name is not the current CACHE_NAME, it's an old cache.
-          if (cacheName !== CACHE_NAME) {
-            console.log(`[Service Worker] Deleting old cache: ${cacheName}`);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
-/**
- * The 'fetch' event intercepts all network requests made by the page.
- * This allows us to define how to respond, e.g., by serving from the cache.
- *
- * Strategy: Cache-First, then Network
- * 1. We check if a matching response exists in the cache.
- * 2. If it does, we return the cached response immediately.
- * 3. If it doesn't, we proceed with the original network request using fetch().
- */
+// ── Fetch: cache-first, network fallback, offline page for navigations (F8) ──
 self.addEventListener('fetch', event => {
-  // We only want to handle GET requests for our caching strategy.
-  if (event.request.method !== 'GET') {
-    return;
-  }
+  if (event.request.method !== 'GET') return;
 
   event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        // If a cached response is found, return it.
-        if (cachedResponse) {
-          // console.log(`[Service Worker] Serving from cache: ${event.request.url}`);
-          return cachedResponse;
+    caches.match(event.request).then(cached => {
+      if (cached) return cached;
+
+      return fetch(event.request).then(response => {
+        // Opportunistically cache successful same-origin responses
+        if (response.ok && new URL(event.request.url).origin === self.location.origin) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
         }
-        // Otherwise, fetch the resource from the network.
-        // console.log(`[Service Worker] Fetching from network: ${event.request.url}`);
-        return fetch(event.request);
-      })
-      .catch(error => {
-        console.error('[Service Worker] Error during fetch:', error);
-        // You could optionally return a fallback offline page here if the fetch fails.
-      })
+        return response;
+      }).catch(() => {
+        // Navigation failure → serve offline page (F8)
+        if (event.request.mode === 'navigate') {
+          return new Response(OFFLINE_FALLBACK, { headers: { 'Content-Type': 'text/html' } });
+        }
+      });
+    })
   );
 });

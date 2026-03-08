@@ -1,991 +1,1329 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sports Soundboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/wavesurfer.js@7"></script>
-    <style>
-      /* Using Inter as a clean, modern font */
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sports Soundboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/wavesurfer.js@7"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Design tokens ─────────────────────────────────────────────────────── */
+    :root {
+      --bg-base:     #0b0f19;
+      --bg-surface:  #111827;
+      --bg-card:     #1a2235;
+      --bg-input:    #0d1321;
+      --border:      #1f2d45;
+      --border-hi:   #2d4268;
+      --accent:      #1d9bf0;
+      --accent-dim:  #1a3a5c;
+      --green:       #22c55e;
+      --green-dim:   #14532d;
+      --red:         #ef4444;
+      --red-dim:     #450a0a;
+      --text-pri:    #e8edf5;
+      --text-sec:    #7a8ba8;
+      --text-dim:    #3d5070;
+      --font-display:'Barlow Condensed', sans-serif;
+      --font-mono:   'DM Mono', monospace;
+      --radius-sm:   0.5rem;
+      --radius-md:   0.875rem;
+      --radius-lg:   1.25rem;
+      --shadow-card: 0 4px 24px rgba(0,0,0,0.4);
+    }
 
-      /* Base styles for a dark theme */
-      body {
-        background-color: #111827; /* Darker gray for more contrast */
-        color: #f9fafb;
-        font-family: 'Inter', sans-serif;
-        padding: 1.5rem;
-      }
+    *, *::before, *::after { box-sizing: border-box; }
 
-      /* Custom styles for the toggle switch for a cleaner look */
-      .toggle {
-        position: relative;
-        width: 42px;
-        height: 24px;
-      }
-      .toggle input {
-        display: none;
-      }
-      .toggle .track {
-        position: absolute;
-        inset: 0;
-        border-radius: 9999px;
-        background: #4b5563;
-        transition: background-color 0.2s ease-in-out;
-      }
-      .toggle .thumb {
-        position: absolute;
-        top: 2px;
-        left: 2px;
-        width: 20px;
-        height: 20px;
-        background: #ffffff;
-        border-radius: 9999px;
-        transition: transform 0.2s ease-in-out;
-      }
-      .toggle input:checked + .track {
-        background: #22c55e;
-      }
-      .toggle input:checked + .track .thumb {
-        transform: translateX(18px);
-      }
+    body {
+      background-color: var(--bg-base);
+      /* Subtle grid texture for depth */
+      background-image:
+        linear-gradient(rgba(29,155,240,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(29,155,240,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      color: var(--text-pri);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      padding: 1.5rem;
+    }
 
-      /* Styling for play/pause/stop buttons (Compact) */
-      .btn-playpause, .btn-stop {
-        color: white;
-        border-radius: 9999px;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-      }
-      .btn-playpause { background-color: #22c55e; }
-      .btn-stop { background-color: #ef4444; }
+    /* ── Typography ─────────────────────────────────────────────────────────── */
+    h1 {
+      font-family: var(--font-display);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-pri);
+    }
 
-      /* Allow sound card titles to wrap */
-      .sound-card .title {
-        white-space: normal;
-      }
+    /* ── Toggle switch ──────────────────────────────────────────────────────── */
+    .toggle { position: relative; width: 38px; height: 22px; }
+    .toggle input { display: none; }
+    .toggle .track {
+      position: absolute; inset: 0; border-radius: 9999px;
+      background: var(--border-hi); transition: background 0.2s;
+    }
+    .toggle .thumb {
+      position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px;
+      background: var(--text-sec); border-radius: 9999px;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .toggle input:checked + .track { background: var(--green); }
+    .toggle input:checked + .track .thumb { transform: translateX(16px); background: #fff; }
 
-      /* Class for items being dragged */
-      .dragging {
-        opacity: 0.5;
-        border: 2px solid #3b82f6;
-      }
+    /* ── Buttons ────────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 0.4rem; border: none; cursor: pointer; font-family: var(--font-mono);
+      font-size: 0.75rem; font-weight: 500; border-radius: var(--radius-sm);
+      padding: 0.5rem 0.875rem; transition: filter 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.95); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-primary  { background: var(--accent);    color: #fff; }
+    .btn-success  { background: var(--green);     color: #fff; }
+    .btn-danger   { background: var(--red);       color: #fff; }
+    .btn-ghost    { background: var(--border);    color: var(--text-sec); }
+    .btn-ghost:hover { background: var(--border-hi); color: var(--text-pri); }
+    .btn:not(:disabled):hover { filter: brightness(1.12); }
 
-      /* Waveform styling (Compact) */
-      .waveform-container {
-        height: 40px;
-        cursor: pointer;
-      }
+    .btn-icon {
+      width: 30px; height: 30px; padding: 0; border-radius: 9999px;
+      font-size: 13px; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: filter 0.15s, transform 0.1s;
+    }
+    .btn-icon:active { transform: scale(0.9); }
+    .btn-play  { background: var(--green); color: #fff; }
+    .btn-stop  { background: var(--red);   color: #fff; }
+    .btn-play:hover, .btn-stop:hover { filter: brightness(1.15); }
 
-      /* Drop zone styling */
-      .drop-zone {
-        transition: all 0.2s ease-in-out;
-        min-height: 200px; /* Base height for drop zones */
-      }
-      .drop-zone.drag-over {
-        border-color: #3b82f6 !important;
-        background-color: rgba(59, 130, 246, 0.1) !important;
-      }
-      /* Hide the placeholder text when the column has items */
-      .drop-zone.has-items .drop-area {
-        display: none;
-      }
+    /* ── Inputs ─────────────────────────────────────────────────────────────── */
+    .input {
+      background: var(--bg-input); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 0.5rem 0.875rem;
+      color: var(--text-pri); font-family: var(--font-mono); font-size: 0.85rem;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+    .input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
+    .input::placeholder { color: var(--text-dim); }
 
-      /* Editable section title styling */
-      .section-title {
-        outline: none;
-        border-radius: 0.5rem;
-        padding: 0.25rem 0.5rem;
-        margin: -0.25rem -0.5rem; /* Offset padding */
-        transition: background-color 0.2s;
-      }
-      .section-title:focus {
-        background-color: #374151; /* bg-gray-700 */
-        box-shadow: 0 0 0 2px #3b82f6; /* focus ring */
-      }
+    select.input { appearance: none; cursor: pointer; }
 
-      /* Modal styles */
-      .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background-color: rgba(0, 0, 0, 0.75);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        opacity: 0;
-        transition: opacity 0.2s ease-in-out;
-        pointer-events: none;
-      }
-      .modal-overlay.visible {
-        opacity: 1;
-        pointer-events: auto;
-      }
-      .modal-content {
-        background-color: #1f2937;
-        padding: 2rem;
-        border-radius: 1rem;
-        color: white;
-        max-width: 90%;
-        width: 500px;
-        transform: scale(0.95);
-        transition: transform 0.2s ease-in-out;
-        max-height: 85vh; /* MOBILE FIX: Limit height */
-        overflow-y: auto; /* MOBILE FIX: Enable scrolling */
-      }
-      .modal-overlay.visible .modal-content {
-        transform: scale(1);
-      }
+    /* ── Surface / Card ─────────────────────────────────────────────────────── */
+    .surface {
+      background: var(--bg-surface); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1rem;
+    }
+    .sound-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-md); padding: 0.625rem;
+      margin-bottom: 0.5rem; display: flex; flex-direction: column;
+      gap: 0.5rem; box-shadow: var(--shadow-card);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .sound-card.is-playing {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-dim), var(--shadow-card);
+    }
+    .sound-card.dragging { opacity: 0.4; border-color: var(--accent); }
 
-      /* Recording indicator animation */
-      .recording-pulse {
-          background-color: #ef4444;
-          animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
-    </style>
+    /* ── Waveform ────────────────────────────────────────────────────────────── */
+    .waveform-host { height: 40px; cursor: pointer; border-radius: 6px; overflow: hidden; }
+
+    /* ── Drop zone ──────────────────────────────────────────────────────────── */
+    .drop-zone {
+      position: relative; border: 2px dashed var(--border);
+      border-radius: var(--radius-md); min-height: 180px;
+      padding: 0.75rem; transition: border-color 0.2s, background 0.2s;
+    }
+    .drop-zone.drag-over {
+      border-color: var(--accent) !important;
+      background: rgba(29,155,240,0.07) !important;
+    }
+    .drop-zone.has-items .drop-placeholder { display: none; }
+    .drop-placeholder {
+      pointer-events: none; position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; color: var(--text-dim); font-size: 0.8rem; gap: 0.4rem;
+    }
+    .drop-placeholder-icon { font-size: 1.75rem; }
+
+    /* ── Section title (contenteditable) ────────────────────────────────────── */
+    .section-title[contenteditable] {
+      outline: none; border-radius: 4px; padding: 0.15rem 0.4rem;
+      margin: -0.15rem -0.4rem; transition: background 0.15s;
+    }
+    .section-title[contenteditable]:focus {
+      background: var(--border); box-shadow: 0 0 0 2px var(--accent);
+    }
+    /* Enter key commits — prevent <br> insertion */
+    .section-title[contenteditable]:focus { caret-color: var(--accent); }
+
+    /* ── Modals ─────────────────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+      display: flex; justify-content: center; align-items: center;
+      z-index: 1000; opacity: 0; pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+    .modal-content {
+      background: var(--bg-surface); border: 1px solid var(--border-hi);
+      padding: 2rem; border-radius: var(--radius-lg); color: var(--text-pri);
+      max-width: 90%; width: 520px;
+      transform: scale(0.95); transition: transform 0.2s;
+      max-height: 88vh; overflow-y: auto;
+    }
+    .modal-overlay.visible .modal-content { transform: scale(1); }
+
+    /* Confirm modal — two-button variant */
+    #confirmModal .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+
+    /* ── Record button ───────────────────────────────────────────────────────── */
+    #recordBtn {
+      width: 52px; height: 52px; border-radius: 9999px;
+      background: var(--bg-card); border: 2px solid var(--border-hi);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem; cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.1s;
+    }
+    #recordBtn:active { transform: scale(0.93); }
+    #recordBtn.recording {
+      background: var(--red-dim); border-color: var(--red);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); } 50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); } }
+
+    /* ── Tooltip ─────────────────────────────────────────────────────────────── */
+    .tooltip-wrap { position: relative; }
+    .tooltip {
+      position: absolute; bottom: calc(100% + 8px); left: 50%;
+      transform: translateX(-50%); background: var(--bg-base);
+      border: 1px solid var(--border-hi); color: var(--text-pri);
+      font-size: 0.7rem; padding: 0.3rem 0.6rem; border-radius: 4px;
+      white-space: nowrap; pointer-events: none;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .tooltip.visible { opacity: 1; }
+
+    /* ── Sliders ─────────────────────────────────────────────────────────────── */
+    input[type=range] { accent-color: var(--accent); cursor: pointer; }
+
+    /* ── Scrollbar ───────────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 9999px; }
+
+    /* ── Utility ─────────────────────────────────────────────────────────────── */
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border-width:0; }
+    .font-mono { font-family: var(--font-mono); }
+  </style>
 </head>
-<body class="bg-gray-900 text-white p-6">
+<body>
 
-  <header class="flex flex-col md:flex-row items-center justify-between mb-6 gap-4">
-    <h1 class="text-3xl font-bold flex items-center gap-3">
-      Sports Soundboard
-    </h1>
-    <div id="donationLinks" class="flex items-center gap-2 text-sm text-gray-400">
-      Like this app?
-      <a href="https://www.paypal.me/mattswymer84" target="_blank" title="PayPal">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/PayPal_2024_%28Icon%29.svg/250px-PayPal_2024_%28Icon%29.svg.png" alt="PayPal" class="h-6 w-auto" />
-      </a>
-      <a href="https://venmo.com/mattswymer" target="_blank" title="Venmo">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/1200px-Venmo_logo.png" alt="Venmo" class="h-6 w-auto" />
-      </a>
+  <!-- ═══════════════════════════════════ HEADER ══════════════════════════════ -->
+  <header class="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
+    <div class="flex items-center gap-3">
+      <span style="font-size:1.75rem">🏟️</span>
+      <h1 class="text-3xl" style="line-height:1">Sports<br><span style="color:var(--accent)">Soundboard</span></h1>
     </div>
-    <div class="flex flex-wrap items-center gap-6">
-      <div class="flex items-center gap-3">
-        <label for="fadeInSlider" class="text-sm shrink-0">Fade In (s)</label>
-        <input id="fadeInSlider" type="range" min="0" max="8" step="0.1" value="2.0" class="w-24 md:w-40" />
-        <span id="fadeInVal" class="w-8 text-right font-mono">2.0</span>
+
+    <div class="flex flex-wrap items-center gap-5">
+      <!-- Fade In -->
+      <div class="flex items-center gap-2">
+        <label for="fadeInSlider" class="text-xs" style="color:var(--text-sec)">Fade In</label>
+        <input id="fadeInSlider" type="range" min="0" max="8" step="0.1" value="2.0" class="w-24" />
+        <span id="fadeInVal" class="font-mono text-xs w-8 text-right" style="color:var(--text-sec)">2.0s</span>
       </div>
-      <div class="flex items-center gap-3">
-        <label for="fadeOutSlider" class="text-sm shrink-0">Fade Out (s)</label>
-        <input id="fadeOutSlider" type="range" min="0" max="8" step="0.1" value="2.0" class="w-24 md:w-40" />
-        <span id="fadeOutVal" class="w-8 text-right font-mono">2.0</span>
+      <!-- Fade Out -->
+      <div class="flex items-center gap-2">
+        <label for="fadeOutSlider" class="text-xs" style="color:var(--text-sec)">Fade Out</label>
+        <input id="fadeOutSlider" type="range" min="0" max="8" step="0.1" value="2.0" class="w-24" />
+        <span id="fadeOutVal" class="font-mono text-xs w-8 text-right" style="color:var(--text-sec)">2.0s</span>
       </div>
-      <button id="fadeAllBtn" class="bg-red-600 hover:bg-red-500 active:bg-red-700 px-4 py-2 rounded-xl font-semibold shadow transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">Fade Out All</button>
-      <button id="helpBtn" class="bg-gray-600 hover:bg-gray-500 w-10 h-10 rounded-full text-xl font-bold flex items-center justify-center transition-transform active:scale-95" title="Help">?</button>
+      <button id="fadeAllBtn" class="btn btn-danger">⏹ Fade Out All</button>
+      <button id="helpBtn"    class="btn btn-ghost" title="Help">? Help</button>
+      <!-- Donation links -->
+      <div class="flex items-center gap-2" style="color:var(--text-dim); font-size:0.7rem;">
+        <span>Support:</span>
+        <a href="https://www.paypal.me/mattswymer84" target="_blank" rel="noopener" title="PayPal">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/PayPal_2024_%28Icon%29.svg/250px-PayPal_2024_%28Icon%29.svg.png" alt="PayPal" class="h-5 w-auto" />
+        </a>
+        <a href="https://venmo.com/mattswymer" target="_blank" rel="noopener" title="Venmo">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Venmo_logo.png/1200px-Venmo_logo.png" alt="Venmo" class="h-5 w-auto" />
+        </a>
+      </div>
     </div>
   </header>
 
-  <section class="mb-6">
-    <div class="bg-gray-800 border border-gray-700 rounded-2xl p-4">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
-        <div class="lg:col-span-6">
-          <label for="ttsText" class="sr-only">Text to generate speech from</label>
-          <input id="ttsText" type="text" placeholder="Now batting, number 42, Jackie Robinson..." class="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-2 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none" />
+  <!-- ═══════════════════════════════════ TTS / RECORD BAR ════════════════════ -->
+  <section class="surface mb-6" aria-label="Add sounds via text-to-speech or microphone">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+      <div class="lg:col-span-5">
+        <label for="ttsText" class="sr-only">Text to generate speech from</label>
+        <input id="ttsText" type="text" placeholder="Now batting, #42, Jackie Robinson…" class="input w-full" />
+      </div>
+      <div class="lg:col-span-6 flex flex-col sm:flex-row gap-2">
+        <label for="voiceSelect" class="sr-only">Select voice</label>
+        <select id="voiceSelect" class="input flex-1 min-w-0">
+          <option value="">Loading voices…</option>
+        </select>
+        <div class="flex gap-2 shrink-0">
+          <button id="previewBtn"  class="btn btn-primary">🔊 Preview</button>
+          <button id="generateBtn" class="btn btn-success">＋ Add to Board</button>
         </div>
-        <div class="lg:col-span-5 flex flex-col sm:flex-row gap-2">
-          <label for="voiceSelect" class="sr-only">Select voice</label>
-          <select id="voiceSelect" class="bg-gray-900 border border-gray-600 rounded-xl px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm min-w-0 flex-1">
-            <option value="">Loading voices...</option>
-          </select>
-          <div class="flex gap-2 shrink-0">
-            <button id="previewBtn" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-3 py-2 rounded-xl text-sm font-semibold shadow transition-colors whitespace-nowrap active:scale-95">🔊 Preview</button>
-            <button id="generateBtn" class="bg-green-600 hover:bg-green-500 active:bg-green-700 px-3 py-2 rounded-xl text-sm font-semibold shadow transition-colors whitespace-nowrap active:scale-95">➕ Add to First Section</button>
-          </div>
-        </div>
-        <div class="lg:col-span-1 flex justify-center lg:justify-end">
-          <div class="relative">
-            <button id="recordBtn" class="w-14 h-14 bg-gray-700 hover:bg-gray-600 border-2 border-gray-600 rounded-full flex items-center justify-center text-xl transition-all duration-200 select-none active:scale-95" title="Hold to record">🎙️</button>
-            <div id="recordingTooltip" class="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded-lg opacity-0 pointer-events-none transition-opacity duration-200 whitespace-nowrap z-10">Hold to record</div>
-          </div>
+      </div>
+      <div class="lg:col-span-1 flex justify-end">
+        <div class="tooltip-wrap">
+          <button id="recordBtn" aria-label="Hold to record audio">🎙️</button>
+          <div id="recordingTooltip" class="tooltip">Hold to record</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- This main grid will be populated dynamically with sections -->
-  <main id="soundboard-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-    <!-- Sections will be inserted here by JavaScript -->
+  <!-- ═══════════════════════════════════ BOARD ═══════════════════════════════ -->
+  <main id="soundboard-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" aria-label="Soundboard sections">
+    <!-- Populated by JS -->
   </main>
 
-  <footer class="mt-6">
-      <button id="addSectionBtn" class="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-3 rounded-xl transition-colors active:scale-95">＋ Add New Section</button>
+  <footer class="mt-5">
+    <button id="addSectionBtn" class="btn btn-ghost w-full py-3 text-sm">＋ Add New Section</button>
   </footer>
 
 
-  <div id="alertModal" class="modal-overlay">
+  <!-- ═══════════════════════════════════ MODALS ══════════════════════════════ -->
+
+  <!-- Alert modal (info only) -->
+  <div id="alertModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="alertModalTitle">
     <div class="modal-content">
-      <h3 class="text-xl font-bold mb-4">Message</h3>
-      <p id="alertMessage"></p>
-      <div class="mt-6 text-right">
-        <button id="alertModalCloseBtn" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-2 rounded-xl font-semibold shadow active:scale-95">OK</button>
+      <h3 id="alertModalTitle" class="text-xl font-bold mb-3" style="font-family:var(--font-display);letter-spacing:.05em">Notice</h3>
+      <p id="alertMessage" style="color:var(--text-sec)"></p>
+      <div class="text-right mt-6">
+        <button id="alertModalCloseBtn" class="btn btn-primary">OK</button>
       </div>
     </div>
   </div>
 
-  <div id="helpModal" class="modal-overlay">
-      <div class="modal-content">
-          <h3 class="text-2xl font-bold mb-4">Welcome to Sports Soundboard!</h3>
-          <div class="space-y-4 text-gray-300">
-              <p>This app is designed for playing audio at live events directly from your device, ensuring reliability even with poor cell service or crowded networks.</p>
-
-              <div>
-                  <h4 class="font-semibold text-lg mb-2 text-white">Getting Started</h4>
-                  <ol class="list-decimal list-inside space-y-2">
-                      <li><strong>Create Your Layout:</strong> Start by adding sections using the "＋ Add New Section" button. Click on a section's title (e.g., "New Section") to rename it to whatever you like, such as "Walk-up Music" or "Player Announcements".</li>
-                      <li>
-                          <strong>Add Your Sounds:</strong> You have three ways to add audio to a section:
-                          <ul class="list-disc list-inside ml-4 mt-1">
-                              <li><strong>Upload:</strong> Use the "＋ Add Sound / Import" button in each section or drag and drop your audio files directly into any section.</li>
-                              <li><strong>Record:</strong> Click and hold the 🎙️ button to record a quick clip. It will be added to the *first* section.</li>
-                              <li><strong>Text-to-Speech (TTS):</strong> Type a phrase, choose a voice, and click "Add". This will also add the sound to the *first* section.</li>
-                          </ul>
-                      </li>
-                       <li><strong>Organize:</strong> You can drag and drop any sound card between your sections to organize them perfectly for your event.</li>
-                      <li><strong>Customize Each Sound:</strong> Every sound card has its own controls to set a custom <strong>Start Time</strong>, adjust the <strong>Volume</strong>, and toggle <strong>Fade In</strong> or <strong>Fade Out</strong> effects.</li>
-                  </ol>
-              </div>
-
-              <div>
-                  <h4 class="font-semibold text-lg mb-2 text-white">Good to Know</h4>
-                  <ul class="list-disc list-inside space-y-2">
-                      <li><strong>Everything is Saved Locally:</strong> All your sounds and your custom section layout are automatically saved in your browser, so your complete soundboard will be ready the next time you open the app on this device.</li>
-                  </ul>
-              </div>
-          </div>
-          <div class="mt-6 text-right">
-              <button id="helpModalCloseBtn" class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 px-4 py-2 rounded-xl font-semibold shadow active:scale-95">Got It</button>
-          </div>
+  <!-- Confirm modal (yes/no) -->
+  <div id="confirmModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+    <div class="modal-content">
+      <h3 id="confirmModalTitle" class="text-xl font-bold mb-3" style="font-family:var(--font-display);letter-spacing:.05em">Confirm</h3>
+      <p id="confirmMessage" style="color:var(--text-sec)"></p>
+      <div class="modal-actions">
+        <button id="confirmCancel" class="btn btn-ghost">Cancel</button>
+        <button id="confirmOk"     class="btn btn-danger">Delete</button>
       </div>
+    </div>
   </div>
+
+  <!-- Rename modal -->
+  <div id="renameModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="renameModalTitle">
+    <div class="modal-content">
+      <h3 id="renameModalTitle" class="text-xl font-bold mb-4" style="font-family:var(--font-display);letter-spacing:.05em">Rename Sound</h3>
+      <input id="renameInput" type="text" class="input w-full" placeholder="Sound name" />
+      <div class="text-right mt-4 flex gap-2 justify-end">
+        <button id="renameCancel" class="btn btn-ghost">Cancel</button>
+        <button id="renameOk"     class="btn btn-primary">Rename</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help modal -->
+  <div id="helpModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+    <div class="modal-content">
+      <h3 id="helpModalTitle" class="text-2xl font-bold mb-4" style="font-family:var(--font-display);letter-spacing:.05em">Welcome to Sports Soundboard</h3>
+      <div class="space-y-4" style="color:var(--text-sec); font-size:.875rem; line-height:1.6">
+        <p>Designed for playing audio at live events — reliable even with poor cell service or crowded networks.</p>
+        <div>
+          <p class="font-bold mb-1" style="color:var(--text-pri)">Getting Started</p>
+          <ol class="list-decimal list-inside space-y-1">
+            <li><strong style="color:var(--text-pri)">Create sections</strong> with "＋ Add New Section". Click a section title to rename it.</li>
+            <li><strong style="color:var(--text-pri)">Add sounds</strong> via Upload (drag-and-drop or the button), Hold-to-Record 🎙️, or Text-to-Speech.</li>
+            <li><strong style="color:var(--text-pri)">Organize</strong> by dragging cards between sections.</li>
+            <li><strong style="color:var(--text-pri)">Customize</strong> each card's start time, volume, and fade toggles.</li>
+          </ol>
+        </div>
+        <p><strong style="color:var(--text-pri)">Everything saves locally</strong> in your browser — your full board is ready next visit.</p>
+      </div>
+      <div class="text-right mt-6">
+        <button id="helpModalCloseBtn" class="btn btn-primary">Got It</button>
+      </div>
+    </div>
+  </div>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
 
-  // ===================================================================
-  // A. CONFIGURATION & STATE VARIABLES
-  // ===================================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // A. CONFIGURATION & STATE
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  // --- Constants ---
-  const DB_NAME = 'soundboardDB_v2'; // Upped version for new structure
-  const DB_VERSION = 1;
-  const SOUNDS_STORE = 'sounds';
-  const SECTIONS_STORE = 'sections';
-  const SETTINGS_KEY = 'sb_settings_v1';
+  const DB_NAME       = 'soundboardDB';
+  const DB_VERSION    = 3;           // F7: version controlled via constant
+  const SOUNDS_STORE  = 'sounds';
+  const SECTIONS_STORE= 'sections';
+  const SETTINGS_KEY  = 'sb_settings_v2';
 
-  // --- DOM Element References ---
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+  // DOM helpers
+  const $  = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-  const soundboardGrid = $('#soundboard-grid');
-  const addSectionBtn = $('#addSectionBtn');
-  const fadeInSlider = $('#fadeInSlider');
-  const fadeOutSlider = $('#fadeOutSlider');
-  const fadeInVal = $('#fadeInVal');
-  const fadeOutVal = $('#fadeOutVal');
-  const fadeAllBtn = $('#fadeAllBtn');
-  const helpBtn = $('#helpBtn');
-  const ttsText = $('#ttsText');
-  const voiceSelect = $('#voiceSelect');
-  const previewBtn = $('#previewBtn');
-  const generateBtn = $('#generateBtn');
-  const recordBtn = $('#recordBtn');
-  const recordingTooltip = $('#recordingTooltip');
+  // DOM refs
+  const soundboardGrid      = $('#soundboard-grid');
+  const addSectionBtn       = $('#addSectionBtn');
+  const fadeInSlider        = $('#fadeInSlider');
+  const fadeOutSlider       = $('#fadeOutSlider');
+  const fadeInVal           = $('#fadeInVal');
+  const fadeOutVal          = $('#fadeOutVal');
+  const fadeAllBtn          = $('#fadeAllBtn');
+  const helpBtn             = $('#helpBtn');
+  const ttsText             = $('#ttsText');
+  const voiceSelect         = $('#voiceSelect');
+  const previewBtn          = $('#previewBtn');
+  const generateBtn         = $('#generateBtn');
+  const recordBtn           = $('#recordBtn');
+  const recordingTooltip    = $('#recordingTooltip');
 
-  // Modals
-  const alertModal = $('#alertModal');
-  const alertMessage = $('#alertMessage');
-  const alertModalCloseBtn = $('#alertModalCloseBtn');
-  const helpModal = $('#helpModal');
-  const helpModalCloseBtn = $('#helpModalCloseBtn');
-
-  // --- Application State ---
-  let fadeInTime = 2.0;
+  // App state
+  let fadeInTime  = 2.0;
   let fadeOutTime = 2.0;
-  let sections = []; // Will hold our section objects {id, name}
-  const activeAudios = new Map(); // Maps card element -> wavesurfer instance
-  const activeUtterances = new Set(); // Stores active TTS utterances
-  let mediaRecorder;
-  let audioChunks = [];
-  let isRecording = false;
-  let microphoneStream = null;
-
-
-  // ===================================================================
-  // B. CORE MODULES & UTILITY FUNCTIONS
-  // ===================================================================
+  let sections    = [];
 
   /**
-   * Formats seconds into a m:ss time string.
-   * @param {number} sec - The time in seconds.
-   * @returns {string} The formatted time string.
+   * Maps card element → { wavesurfer, objectUrl }
+   * Storing the objectUrl here lets us revoke it precisely on destroy (M1, M2).
+   * @type {Map<HTMLElement, {ws: WaveSurfer, objectUrl: string}>}
    */
+  const activeAudios = new Map();
+
+  // Recording state
+  let mediaRecorder    = null;
+  let audioChunks      = [];
+  let isRecording      = false;
+  let microphoneStream = null; // M5: tracked for explicit release
+
+  // Drag state — track origin section before DOM mutation (M7)
+  let dragOriginSectionId = null;
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // B. UTILITIES
+  // ═══════════════════════════════════════════════════════════════════════════
+
   const formatTime = (sec) => {
-    if (isNaN(sec) || !isFinite(sec)) return '0:00';
+    if (!isFinite(sec) || isNaN(sec)) return '0:00';
     const m = Math.floor(sec / 60);
     const s = Math.floor(sec % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
 
-  /**
-   * Displays a message in the alert modal.
-   * @param {string} message - The message to display.
-   */
-  const showMessage = (message) => {
-    alertMessage.textContent = message;
-    alertModal.classList.add('visible');
+  /** Debounce — returns a fn that fires `fn` only after `ms` of silence. */
+  const debounce = (fn, ms) => {
+    let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
   };
 
-  // --- IndexedDB Wrapper ---
-  const idb = {
-    db: null,
-    open: async () => {
-        if (idb.db) return idb.db;
-        return new Promise((resolve, reject) => {
-            const req = indexedDB.open(DB_NAME, DB_VERSION);
-            req.onupgradeneeded = e => {
-                const db = e.target.result;
-                if (!db.objectStoreNames.contains(SOUNDS_STORE)) {
-                    db.createObjectStore(SOUNDS_STORE);
-                }
-                if (!db.objectStoreNames.contains(SECTIONS_STORE)) {
-                    db.createObjectStore(SECTIONS_STORE);
-                }
-            };
-            req.onsuccess = e => {
-                idb.db = e.target.result;
-                resolve(idb.db);
-            };
-            req.onerror = e => reject(e.target.error);
-        });
-    },
-    get: async (storeName, key) => {
-      const db = await idb.open();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, 'readonly');
-        const req = tx.objectStore(storeName).get(key);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = e => reject(e.target.error);
-      });
-    },
-    set: async (storeName, key, value) => {
-      const db = await idb.open();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, 'readwrite');
-        tx.objectStore(storeName).put(value, key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = e => reject(e.target.error);
-      });
-    },
-    getAll: async (storeName) => {
-      const db = await idb.open();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, 'readonly');
-        const req = tx.objectStore(storeName).getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = e => reject(e.target.error);
-      });
-    },
-    delete: async (storeName, key) => {
-      const db = await idb.open();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(storeName, 'readwrite');
-        tx.objectStore(storeName).delete(key);
-        tx.oncomplete = () => resolve();
-        tx.onerror = e => reject(e.target.error);
-      });
-    }
-  };
-
-  // --- Settings Management (LocalStorage) ---
-  const saveSettings = () => localStorage.setItem(SETTINGS_KEY, JSON.stringify({ fadeIn: fadeInTime, fadeOut: fadeOutTime }));
-  const loadSettings = () => JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-
-
-  // ===================================================================
-  // C. UI & COMPONENT CREATION
-  // ===================================================================
-
-  /**
-   * Creates a reusable toggle switch component.
-   * @param {string} labelText - The text label for the toggle.
-   * @returns {{wrap: HTMLElement, input: HTMLInputElement}}
-   */
-  const createToggle = (labelText) => {
-    const wrap = document.createElement('label');
-    wrap.className = 'flex items-center gap-2 text-xs select-none cursor-pointer';
-    wrap.innerHTML = `
-      <span>${labelText}</span>
-      <span class="toggle inline-block">
-        <input type="checkbox" checked />
-        <span class="track"><span class="thumb"></span></span>
-      </span>`;
-    return { wrap, input: wrap.querySelector('input') };
+  /** rAF-throttle for hot paths like dragover. */
+  const rafThrottle = (fn) => {
+    let id = null;
+    return (...args) => {
+      if (id) return;
+      id = requestAnimationFrame(() => { fn(...args); id = null; });
+    };
   };
 
   /**
-   * Creates a sound card element. Does not handle persistence.
-   * @param {object} cardData - Data for the card (name, blob, idbKey, etc.).
-   * @returns {Promise<HTMLElement>} The created card element.
+   * Cleanly destroys a WaveSurfer instance and revokes its object URL. (M1, M2, M3)
+   * @param {HTMLElement} card
    */
-  const createCardElement = async (cardData) => {
-    const { name, blob, idbKey, text, voiceName, volume = 1.0, startTime = 0 } = cardData;
-    const card = document.createElement('div');
-    card.className = 'sound-card group/card bg-gray-800 border border-gray-700 rounded-2xl p-2 mb-2 shadow flex flex-col gap-2';
-    card.draggable = true;
-    card.dataset.idbKey = idbKey || null;
-    card.dataset.type = text ? 'tts' : 'audio';
+  const destroyCard = (card) => {
+    const entry = activeAudios.get(card);
+    if (!entry) return;
+    const { ws, objectUrl } = entry;
+    try { ws.destroy(); } catch (_) {}
+    if (objectUrl) URL.revokeObjectURL(objectUrl); // M1: revoke blob URL
+    activeAudios.delete(card);
+  };
 
-    const header = document.createElement('div');
-    header.className = 'flex items-center gap-2';
-    header.innerHTML = `
-      <div class="text-gray-500 cursor-grab select-none pt-1">⋮⋮</div>
-      <button class="btn-playpause shrink-0 transition-transform active:scale-95" aria-label="Play">▶</button>
-      <button class="btn-stop shrink-0 transition-transform active:scale-95" aria-label="Stop">⏹</button>
-      <div class="title font-semibold flex-1 min-w-0" title="${name}">${name}</div>
-      <button class="edit-btn text-gray-300 hover:text-white transition-transform active:scale-95 shrink-0" title="Rename">✎</button>
-      <button class="del-btn text-gray-300 hover:text-red-400 transition-transform active:scale-95 shrink-0" title="Delete">✖</button>
-    `;
-    card.appendChild(header);
+  /**
+   * Destroys ALL active WaveSurfer instances safely, then clears the map. (M3)
+   * Order guaranteed: destroy first, then clear.
+   */
+  const destroyAllCards = () => {
+    activeAudios.forEach((_, card) => destroyCard(card));
+    // Map should be empty by now; guard just in case
+    activeAudios.clear();
+  };
 
-    const playBtn = $('.btn-playpause', header);
-    const stopBtn = $('.btn-stop', header);
-    const titleEl = $('.title', header);
-    const editBtn = $('.edit-btn', header);
-    const delBtn = $('.del-btn', header);
 
-    if (card.dataset.type === 'audio') {
-        const details = document.createElement('div');
-        details.className = 'pl-10 flex flex-col gap-2';
+  // ═══════════════════════════════════════════════════════════════════════════
+  // C. MODAL SYSTEM  (m2: replaces all confirm/prompt with custom modals)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-        const fadeInToggle = createToggle('Fade In');
-        const fadeOutToggle = createToggle('Fade Out');
-        const togglesWrap = document.createElement('div');
-        togglesWrap.className = 'flex items-center gap-4';
-        togglesWrap.append(fadeInToggle.wrap, fadeOutToggle.wrap);
+  const alertModal        = $('#alertModal');
+  const alertMessage      = $('#alertMessage');
+  const alertModalClose   = $('#alertModalCloseBtn');
+  const confirmModal      = $('#confirmModal');
+  const confirmMessage    = $('#confirmMessage');
+  const confirmOk         = $('#confirmOk');
+  const confirmCancel     = $('#confirmCancel');
+  const renameModal       = $('#renameModal');
+  const renameInput       = $('#renameInput');
+  const renameOk          = $('#renameOk');
+  const renameCancel      = $('#renameCancel');
+  const helpModal         = $('#helpModal');
+  const helpModalClose    = $('#helpModalCloseBtn');
 
-        const controlsWrap = document.createElement('div');
-        controlsWrap.className = 'flex items-center gap-4';
+  const openModal  = (el) => el.classList.add('visible');
+  const closeModal = (el) => el.classList.remove('visible');
 
-        const volumeWrap = document.createElement('div');
-        volumeWrap.className = 'flex items-center gap-2 flex-1';
-        volumeWrap.innerHTML = `<span class="text-xs w-12">Volume</span><input type="range" min="0" max="1" step="0.01" value="${volume}" class="w-full">`;
-        const volumeSlider = $('input', volumeWrap);
+  const showMessage = (msg) => {
+    alertMessage.textContent = msg;
+    openModal(alertModal);
+  };
 
-        const startTimeWrap = document.createElement('div');
-        startTimeWrap.className = 'flex items-center gap-2';
-        startTimeWrap.innerHTML = `<label class="text-xs" for="startTime-${idbKey}">Start (s)</label><input type="number" id="startTime-${idbKey}" value="${startTime}" min="0" step="0.1" class="w-20 bg-gray-700 rounded px-2 py-1 text-xs">`;
-        const startTimeInput = $('input', startTimeWrap);
+  /** Returns a Promise<boolean> — resolves true on OK, false on Cancel. */
+  const showConfirm = (msg) => new Promise(resolve => {
+    confirmMessage.textContent = msg;
+    openModal(confirmModal);
+    const onOk     = () => { closeModal(confirmModal); cleanup(); resolve(true);  };
+    const onCancel = () => { closeModal(confirmModal); cleanup(); resolve(false); };
+    const cleanup  = () => { confirmOk.removeEventListener('click', onOk); confirmCancel.removeEventListener('click', onCancel); };
+    confirmOk.addEventListener('click', onOk);
+    confirmCancel.addEventListener('click', onCancel);
+  });
 
-        controlsWrap.append(volumeWrap, startTimeWrap);
+  /** Returns a Promise<string|null> — resolves with trimmed name or null. */
+  const showRename = (currentName) => new Promise(resolve => {
+    renameInput.value = currentName;
+    openModal(renameModal);
+    renameInput.focus();
+    renameInput.select();
+    const onOk     = () => { closeModal(renameModal); cleanup(); resolve(renameInput.value.trim() || null); };
+    const onCancel = () => { closeModal(renameModal); cleanup(); resolve(null); };
+    const onKey    = (e) => { if (e.key === 'Enter') onOk(); if (e.key === 'Escape') onCancel(); };
+    const cleanup  = () => {
+      renameOk.removeEventListener('click', onOk);
+      renameCancel.removeEventListener('click', onCancel);
+      renameInput.removeEventListener('keydown', onKey);
+    };
+    renameOk.addEventListener('click', onOk);
+    renameCancel.addEventListener('click', onCancel);
+    renameInput.addEventListener('keydown', onKey);
+  });
 
-        const progressContainer = document.createElement('div');
-        progressContainer.innerHTML = `
-            <div class="waveform-container bg-gray-700/50 rounded-lg" role="button" tabindex="0" aria-label="Seek audio position"></div>
-            <div class="flex justify-between text-xs text-gray-400 mt-0.5 font-mono">
-            <span class="cur">0:00</span>
-            <span class="dur">0:00</span>
-            </div>`;
-        const waveformEl = $('.waveform-container', progressContainer);
-        const curLbl = $('.cur', progressContainer);
-        const durLbl = $('.dur', progressContainer);
+  alertModalClose.addEventListener('click', () => closeModal(alertModal));
+  helpModalClose.addEventListener('click',  () => closeModal(helpModal));
+  helpModal.addEventListener('click', (e) => { if (e.target === helpModal) closeModal(helpModal); });
+  helpBtn.addEventListener('click', () => openModal(helpModal));
 
-        details.append(togglesWrap, controlsWrap, progressContainer);
-        card.appendChild(details);
 
-        const wavesurfer = WaveSurfer.create({
-            container: waveformEl, waveColor: '#6b7280', progressColor: '#3b82f6', height: 40,
-            cursorWidth: 1, cursorColor: '#f87171', barWidth: 2, barRadius: 2, url: URL.createObjectURL(blob),
-        });
-        activeAudios.set(card, wavesurfer);
+  // ═══════════════════════════════════════════════════════════════════════════
+  // D. INDEXED DB  (F3: guards against unavailable IDB)
+  // ═══════════════════════════════════════════════════════════════════════════
 
-        wavesurfer.on('ready', (duration) => { durLbl.textContent = formatTime(duration); wavesurfer.setVolume(volumeSlider.value); });
-        wavesurfer.on('timeupdate', (currentTime) => curLbl.textContent = formatTime(currentTime));
-        wavesurfer.on('play', () => { playBtn.innerHTML = '⏸'; playBtn.setAttribute('aria-label', 'Pause'); card.classList.add('ring-2', 'ring-blue-500', 'bg-gray-700/50'); });
-        wavesurfer.on('pause', () => { playBtn.innerHTML = '▶'; playBtn.setAttribute('aria-label', 'Play'); card.classList.remove('ring-2', 'ring-blue-500', 'bg-gray-700/50'); });
-        wavesurfer.on('finish', () => wavesurfer.emit('pause'));
+  const idb = (() => {
+    let _db = null;
 
-        playBtn.addEventListener('click', () => {
-            if (wavesurfer.isPlaying()) { wavesurfer.pause(); return; }
-            const currentTime = wavesurfer.getCurrentTime();
-            const duration = wavesurfer.getDuration();
-            if (currentTime > 0 && currentTime < duration) { wavesurfer.play(); return; }
-            const startSeconds = parseFloat(startTimeInput.value) || 0;
-            wavesurfer.seekTo(startSeconds > 0 && duration > 0 ? (startSeconds / duration) : 0);
-            if (fadeInToggle.input.checked && fadeInTime > 0) {
-                const targetVolume = parseFloat(volumeSlider.value);
-                wavesurfer.setVolume(0);
-                wavesurfer.play();
-                let start = null;
-                const fade = (ts) => {
-                    if (!start) start = ts;
-                    const progress = Math.min(1, (ts - start) / (fadeInTime * 1000));
-                    wavesurfer.setVolume(targetVolume * progress);
-                    if (progress < 1) requestAnimationFrame(fade);
-                };
-                requestAnimationFrame(fade);
-            } else {
-                wavesurfer.setVolume(parseFloat(volumeSlider.value));
-                wavesurfer.play();
-            }
-        });
-
-        stopBtn.addEventListener('click', () => {
-            if (fadeOutToggle.input.checked && wavesurfer.isPlaying()) {
-                const currentVolume = wavesurfer.getVolume(); let start;
-                const fade = (ts) => {
-                    if (!start) start = ts;
-                    const progress = Math.max(0, 1 - ((ts - start) / (fadeOutTime * 1000)));
-                    wavesurfer.setVolume(currentVolume * progress);
-                    if (progress > 0) requestAnimationFrame(fade);
-                    else { wavesurfer.stop(); wavesurfer.setVolume(currentVolume); }
-                };
-                requestAnimationFrame(fade);
-            } else { wavesurfer.stop(); }
-        });
-
-        const saveSoundData = (key, value) => {
-            if (card.dataset.idbKey) {
-                idb.get(SOUNDS_STORE, card.dataset.idbKey).then(rec => {
-                    if(rec) { rec[key] = value; idb.set(SOUNDS_STORE, card.dataset.idbKey, rec); }
-                });
-            }
+    const open = async () => {
+      if (_db) return _db;
+      // F3: detect private-mode IDB block
+      if (!window.indexedDB) throw new Error('IndexedDB is not available in this browser context.');
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = e => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(SOUNDS_STORE))   db.createObjectStore(SOUNDS_STORE);
+          if (!db.objectStoreNames.contains(SECTIONS_STORE)) db.createObjectStore(SECTIONS_STORE);
         };
-        volumeSlider.addEventListener('input', (e) => wavesurfer.setVolume(e.target.value));
-        volumeSlider.addEventListener('change', (e) => saveSoundData('volume', parseFloat(e.target.value)));
-        startTimeInput.addEventListener('change', (e) => saveSoundData('startTime', parseFloat(e.target.value)));
-    } else {
-        card.dataset.text = text; card.dataset.voice = voiceName;
-        playBtn.addEventListener('click', () => {
-            if (!('speechSynthesis' in window)) return showMessage("Browser TTS is not supported.");
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(text);
-            u.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
-            u.onstart = () => card.classList.add('ring-2', 'ring-blue-500', 'bg-gray-700/50');
-            u.onend = () => { card.classList.remove('ring-2', 'ring-blue-500', 'bg-gray-700/50'); activeUtterances.delete(u); };
-            window.speechSynthesis.speak(u); activeUtterances.add(u);
+        req.onsuccess  = e => { _db = e.target.result; resolve(_db); };
+        req.onerror    = e => reject(e.target.error);
+        req.onblocked  = () => reject(new Error('IDB blocked — please close other tabs using this app.'));
+      });
+    };
+
+    const tx = async (storeName, mode, fn) => {
+      const db   = await open();
+      const transaction = db.transaction(storeName, mode);
+      const store = transaction.objectStore(storeName);
+      return new Promise((resolve, reject) => {
+        const req          = fn(store);
+        transaction.oncomplete = () => resolve(req?.result);
+        transaction.onerror    = e  => reject(e.target.error);
+      });
+    };
+
+    return {
+      get:    (store, key)        => tx(store, 'readonly',  s => s.get(key)),
+      set:    (store, key, value) => tx(store, 'readwrite', s => s.put(value, key)),
+      delete: (store, key)        => tx(store, 'readwrite', s => s.delete(key)),
+      getAll: (store)             => tx(store, 'readonly',  s => s.getAll()),
+      getAllKeys: (store)         => tx(store, 'readonly',  s => s.getAllKeys()),
+    };
+  })();
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // E. SETTINGS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const saveSettings = debounce(() =>
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ fadeIn: fadeInTime, fadeOut: fadeOutTime }))
+  , 300);
+
+  const loadSettings = () => {
+    try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); }
+    catch { return {}; }
+  };
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // F. FADE ANIMATION  (F4: cancelable rAF with handle cleanup)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Smoothly fades a WaveSurfer instance's volume over `durationSec`.
+   * @param {WaveSurfer} ws
+   * @param {number}     fromVol
+   * @param {number}     toVol
+   * @param {number}     durationSec
+   * @param {Function}   [onComplete]
+   * @returns {Function} cancel — call to abort the animation
+   */
+  const animateFade = (ws, fromVol, toVol, durationSec, onComplete) => {
+    let frameId = null;
+    let startTs = null;
+    const durationMs = durationSec * 1000;
+
+    const step = (ts) => {
+      if (!startTs) startTs = ts;
+      const progress = Math.min(1, (ts - startTs) / durationMs);
+      ws.setVolume(fromVol + (toVol - fromVol) * progress);
+      if (progress < 1) { frameId = requestAnimationFrame(step); }
+      else { frameId = null; onComplete?.(); }
+    };
+    frameId = requestAnimationFrame(step);
+
+    return () => { if (frameId !== null) { cancelAnimationFrame(frameId); frameId = null; } };
+  };
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // G. SOUND CARD  (F5: split into shell + audio variant + TTS variant)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Shared card shell — header row with drag handle, play/stop, title, edit, delete. */
+  const createCardShell = (name) => {
+    const card = document.createElement('div');
+    card.className = 'sound-card';
+    card.draggable  = true;
+
+    card.innerHTML = `
+      <div class="card-header flex items-center gap-2">
+        <div class="drag-handle text-xs select-none cursor-grab" style="color:var(--text-dim)" aria-hidden="true">⠿</div>
+        <button class="btn-icon btn-play shrink-0" aria-label="Play">▶</button>
+        <button class="btn-icon btn-stop shrink-0" aria-label="Stop">⏹</button>
+        <div class="card-title flex-1 min-w-0 text-sm font-mono truncate" title="${name}">${name}</div>
+        <button class="edit-btn shrink-0 text-xs btn btn-ghost" aria-label="Rename sound" title="Rename">✎</button>
+        <button class="del-btn  shrink-0 text-xs btn btn-ghost" aria-label="Delete sound" title="Delete" style="color:var(--text-sec)">✖</button>
+      </div>`;
+
+    return {
+      card,
+      playBtn:  $('.btn-play',  card),
+      stopBtn:  $('.btn-stop',  card),
+      titleEl:  $('.card-title',card),
+      editBtn:  $('.edit-btn',  card),
+      delBtn:   $('.del-btn',   card),
+      header:   $('.card-header', card),
+    };
+  };
+
+  /** Builds the controls row beneath the header for audio cards. */
+  const createAudioControls = (idbKey, volume, startTime) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'pl-6 flex flex-col gap-2';
+
+    // Fade toggles
+    const toggleRow = document.createElement('div');
+    toggleRow.className = 'flex items-center gap-4';
+    const makeToggle = (label) => {
+      const lbl = document.createElement('label');
+      lbl.className = 'flex items-center gap-1.5 text-xs cursor-pointer select-none';
+      lbl.style.color = 'var(--text-sec)';
+      lbl.innerHTML = `${label}<span class="toggle inline-block"><input type="checkbox" checked /><span class="track"><span class="thumb"></span></span></span>`;
+      return { wrap: lbl, input: lbl.querySelector('input') };
+    };
+    const fadeInTog  = makeToggle('Fade In');
+    const fadeOutTog = makeToggle('Fade Out');
+    toggleRow.append(fadeInTog.wrap, fadeOutTog.wrap);
+
+    // Volume + Start time
+    const ctrlRow = document.createElement('div');
+    ctrlRow.className = 'flex items-center gap-4';
+    ctrlRow.innerHTML = `
+      <div class="flex items-center gap-2 flex-1">
+        <span class="text-xs" style="color:var(--text-sec)">Vol</span>
+        <input type="range" min="0" max="1" step="0.01" value="${volume}" class="flex-1" aria-label="Volume" />
+      </div>
+      <div class="flex items-center gap-1.5">
+        <label class="text-xs" style="color:var(--text-sec)" for="st-${idbKey}">Start</label>
+        <input type="number" id="st-${idbKey}" value="${startTime}" min="0" step="0.1"
+               class="input text-xs w-20" aria-label="Start time in seconds" />
+      </div>`;
+
+    const volSlider    = ctrlRow.querySelector('[type=range]');
+    const startInput   = ctrlRow.querySelector('[type=number]');
+
+    // Waveform + time display
+    const waveWrap = document.createElement('div');
+    waveWrap.innerHTML = `
+      <div class="waveform-host" role="button" tabindex="0" aria-label="Seek audio position"></div>
+      <div class="flex justify-between font-mono mt-0.5" style="font-size:0.65rem;color:var(--text-dim)">
+        <span class="cur">0:00</span><span class="dur">0:00</span>
+      </div>`;
+    const waveHost = waveWrap.querySelector('.waveform-host');
+    const curLbl   = waveWrap.querySelector('.cur');
+    const durLbl   = waveWrap.querySelector('.dur');
+
+    wrap.append(toggleRow, ctrlRow, waveWrap);
+
+    return { wrap, fadeInTog, fadeOutTog, volSlider, startInput, waveHost, curLbl, durLbl };
+  };
+
+  /**
+   * Creates a full audio card with WaveSurfer. (M1, M2, M3, M4, m3, m8, F4, F5, F6)
+   * @param {object} cardData
+   * @returns {Promise<HTMLElement>}
+   */
+  const createAudioCard = async (cardData) => {
+    const { name, blob, idbKey, volume = 1.0, startTime = 0 } = cardData;
+    const { card, playBtn, stopBtn, titleEl, editBtn, delBtn } = createCardShell(name);
+    card.dataset.idbKey = idbKey;
+    card.dataset.type   = 'audio';
+
+    const controls = createAudioControls(idbKey, volume, startTime);
+    card.appendChild(controls.wrap);
+
+    const { fadeInTog, fadeOutTog, volSlider, startInput, waveHost, curLbl, durLbl } = controls;
+
+    // m3: hold the full record in a closure — no extra IDB get on every slider change
+    let record = { ...cardData };
+
+    const persistRecord = debounce(async () => { // m8: debounced IDB writes
+      try { await idb.set(SOUNDS_STORE, idbKey, record); }
+      catch (e) { console.error('[IDB] Failed to persist sound record:', e); }
+    }, 400);
+
+    // Create object URL and register for cleanup (M1)
+    const objectUrl = URL.createObjectURL(blob);
+
+    const ws = WaveSurfer.create({
+      container:     waveHost,
+      waveColor:     '#2d4268',
+      progressColor: '#1d9bf0',
+      height:        40,
+      cursorWidth:   1,
+      cursorColor:   '#ef4444',
+      barWidth:      2,
+      barRadius:     2,
+      url:           objectUrl,
+    });
+
+    // M1 + M2: register entry BEFORE any async event, so destroyCard can always find it
+    activeAudios.set(card, { ws, objectUrl });
+
+    // Active fade cancel handles (F4)
+    let cancelFadeIn  = null;
+    let cancelFadeOut = null;
+
+    ws.on('ready', (duration) => {
+      durLbl.textContent = formatTime(duration);
+      ws.setVolume(parseFloat(volSlider.value));
+    });
+    ws.on('timeupdate', (t) => { curLbl.textContent = formatTime(t); });
+    ws.on('play',  () => { playBtn.innerHTML = '⏸'; playBtn.setAttribute('aria-label', 'Pause'); card.classList.add('is-playing'); });
+    ws.on('pause', () => { playBtn.innerHTML = '▶'; playBtn.setAttribute('aria-label', 'Play');  card.classList.remove('is-playing'); });
+    ws.on('finish',() => ws.emit('pause'));
+
+    // F6: waveform keyboard seek
+    waveHost.addEventListener('keydown', (e) => {
+      if (e.key === ' ') { e.preventDefault(); playBtn.click(); }
+      if (e.key === 'ArrowRight') ws.skip(5);
+      if (e.key === 'ArrowLeft')  ws.skip(-5);
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (ws.isPlaying()) { ws.pause(); return; }
+
+      cancelFadeOut?.(); // cancel any ongoing fade-out
+
+      const cur      = ws.getCurrentTime();
+      const dur      = ws.getDuration();
+      const resuming = cur > 0 && cur < dur;
+
+      if (!resuming) {
+        const s = parseFloat(startInput.value) || 0;
+        ws.seekTo(s > 0 && dur > 0 ? s / dur : 0);
+      }
+
+      const targetVol = parseFloat(volSlider.value);
+      if (!resuming && fadeInTog.input.checked && fadeInTime > 0) {
+        ws.setVolume(0);
+        ws.play();
+        cancelFadeIn = animateFade(ws, 0, targetVol, fadeInTime);
+      } else {
+        ws.setVolume(targetVol);
+        ws.play();
+      }
+    });
+
+    const doStop = (immediate = false) => {
+      if (!immediate && fadeOutTog.input.checked && ws.isPlaying()) {
+        const cur = ws.getVolume();
+        cancelFadeIn?.(); // cancel any ongoing fade-in
+        cancelFadeOut = animateFade(ws, cur, 0, fadeOutTime, () => {
+          ws.stop();
+          ws.setVolume(cur); // restore target vol after stop
+          cancelFadeOut = null;
         });
-        stopBtn.addEventListener('click', () => { if ('speechSynthesis' in window) window.speechSynthesis.cancel(); });
-    }
+      } else {
+        cancelFadeIn?.();
+        cancelFadeOut?.();
+        ws.stop();
+        ws.setVolume(parseFloat(volSlider.value));
+      }
+    };
 
-    delBtn.addEventListener('click', () => {
-        if (!confirm('Are you sure you want to delete this sound?')) return;
-        if (card.dataset.type === 'audio') {
-            const ws = activeAudios.get(card); if (ws) { ws.destroy(); activeAudios.delete(card); }
-        } else { window.speechSynthesis.cancel(); }
-        card.remove(); updateSectionCount(card.closest('section').dataset.sectionId);
-        if (card.dataset.idbKey) idb.delete(SOUNDS_STORE, card.dataset.idbKey);
+    stopBtn.addEventListener('click', () => doStop());
+
+    // Expose doStop for the "Fade Out All" global button (m7: no synthetic click)
+    card._doStop = doStop;
+
+    volSlider.addEventListener('input',  (e) => ws.setVolume(parseFloat(e.target.value)));
+    volSlider.addEventListener('change', (e) => { record.volume = parseFloat(e.target.value); persistRecord(); });
+    startInput.addEventListener('change', (e) => { record.startTime = parseFloat(e.target.value) || 0; persistRecord(); });
+
+    // Edit / Delete
+    editBtn.addEventListener('click', async () => {
+      const newName = await showRename(titleEl.textContent);
+      if (newName) {
+        titleEl.textContent = newName; titleEl.title = newName;
+        record.name = newName; persistRecord();
+      }
     });
 
-    editBtn.addEventListener('click', () => {
-        const newName = prompt('Enter a new name:', titleEl.textContent);
-        if (newName && newName.trim()) {
-            const finalName = newName.trim();
-            titleEl.textContent = finalName; titleEl.title = finalName;
-            if (card.dataset.idbKey) {
-                 idb.get(SOUNDS_STORE, card.dataset.idbKey).then(rec => {
-                    if(rec) { rec.name = finalName; idb.set(SOUNDS_STORE, card.dataset.idbKey, rec); }
-                });
-            }
-        }
+    delBtn.addEventListener('click', async () => {
+      if (!await showConfirm(`Delete "${titleEl.textContent}"?`)) return;
+      destroyCard(card);
+      card.remove();
+      updateSectionCount(card.closest('section')?.dataset.sectionId);
+      try { await idb.delete(SOUNDS_STORE, idbKey); } catch (_) {}
     });
 
-    card.addEventListener('dragstart', (e) => { card.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    // Drag (M7: capture origin before DOM mutation)
+    card.addEventListener('dragstart', (e) => {
+      dragOriginSectionId = card.closest('section')?.dataset.sectionId ?? null;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
     card.addEventListener('dragend', () => card.classList.remove('dragging'));
 
     return card;
   };
 
+  /**
+   * Creates a TTS card. (F5)
+   * @param {object} cardData
+   * @returns {Promise<HTMLElement>}
+   */
+  const createTTSCard = async (cardData) => {
+    const { name, text, voiceName, idbKey } = cardData;
+    const { card, playBtn, stopBtn, titleEl, editBtn, delBtn } = createCardShell(name);
+    card.dataset.idbKey = idbKey;
+    card.dataset.type   = 'tts';
+
+    playBtn.addEventListener('click', () => {
+      if (!('speechSynthesis' in window)) return showMessage('Browser TTS is not supported.');
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.voice  = window.speechSynthesis.getVoices().find(v => v.name === voiceName) ?? null;
+      u.onstart = () => card.classList.add('is-playing');
+      u.onend   = () => card.classList.remove('is-playing');
+      window.speechSynthesis.speak(u);
+    });
+    stopBtn.addEventListener('click', () => {
+      window.speechSynthesis.cancel();
+      card.classList.remove('is-playing');
+    });
+
+    editBtn.addEventListener('click', async () => {
+      const newName = await showRename(titleEl.textContent);
+      if (newName) {
+        titleEl.textContent = newName; titleEl.title = newName;
+        try {
+          const rec = await idb.get(SOUNDS_STORE, idbKey);
+          if (rec) { rec.name = newName; await idb.set(SOUNDS_STORE, idbKey, rec); }
+        } catch (_) {}
+      }
+    });
+
+    delBtn.addEventListener('click', async () => {
+      if (!await showConfirm(`Delete "${titleEl.textContent}"?`)) return;
+      window.speechSynthesis.cancel();
+      card.remove();
+      updateSectionCount(card.closest('section')?.dataset.sectionId);
+      try { await idb.delete(SOUNDS_STORE, idbKey); } catch (_) {}
+    });
+
+    card.addEventListener('dragstart', (e) => {
+      dragOriginSectionId = card.closest('section')?.dataset.sectionId ?? null;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    card.addEventListener('dragend', () => card.classList.remove('dragging'));
+
+    return card;
+  };
+
+  /** Route to the correct factory. */
+  const createCardElement = (cardData) =>
+    cardData.type === 'tts' ? createTTSCard(cardData) : createAudioCard(cardData);
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // H. SECTION COUNT HELPER
+  // ═══════════════════════════════════════════════════════════════════════════
+
   const updateSectionCount = (sectionId) => {
+    if (!sectionId) return;
     const sectionEl = $(`[data-section-id="${sectionId}"]`);
-    if(sectionEl) {
-        const count = sectionEl.querySelectorAll('.sound-card').length;
-        $('.section-count', sectionEl).textContent = count;
-        $('.drop-zone', sectionEl).classList.toggle('has-items', count > 0);
-    }
+    if (!sectionEl) return;
+    const count = $$('.sound-card', sectionEl).length;
+    $('.section-count', sectionEl).textContent = count;
+    $('.drop-zone', sectionEl).classList.toggle('has-items', count > 0);
   };
 
 
-  // ===================================================================
-  // D. SECTION MANAGEMENT
-  // ===================================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // I. SECTION RENDERING
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** rAF-throttled dragover handler to reduce reflow (m5). */
+  const handleDragOver = rafThrottle((e, dropZone) => {
+    e.preventDefault();
+    const dragging = $('.dragging');
+    if (!dragging) return;
+    const after = getDragAfterElement(dropZone, e.clientY);
+    dropZone.insertBefore(dragging, after ?? null);
+  });
+
+  const getDragAfterElement = (container, y) => {
+    const cards = $$('.sound-card:not(.dragging)', container);
+    let closest = { offset: -Infinity, element: null };
+    for (const card of cards) {
+      const box    = card.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) closest = { offset, element: card };
+    }
+    return closest.element;
+  };
 
   const renderSections = () => {
-      soundboardGrid.innerHTML = ''; // Clear existing sections
-      sections.forEach(sectionData => {
-          const sectionEl = document.createElement('section');
-          sectionEl.dataset.sectionId = sectionData.id;
+    soundboardGrid.innerHTML = '';
+    sections.forEach(sec => {
+      const sectionEl = document.createElement('section');
+      sectionEl.dataset.sectionId = sec.id;
+      sectionEl.setAttribute('aria-label', `${sec.name} section`);
 
-          const header = document.createElement('div');
-          header.className = 'flex items-center justify-between mb-2';
+      sectionEl.innerHTML = `
+        <div class="section-header flex items-center justify-between mb-2">
+          <div class="flex items-center gap-2">
+            <h2 class="section-title" contenteditable="true" spellcheck="false"
+                aria-label="Section name — click to rename">${sec.name}</h2>
+            <span class="section-count text-xs font-mono px-2 py-0.5 rounded-md"
+                  style="background:var(--border);color:var(--text-sec)">0</span>
+          </div>
+          <button class="del-section-btn btn btn-ghost text-xs" aria-label="Delete section" title="Delete section">✖</button>
+        </div>
+        <div class="drop-zone">
+          <div class="drop-placeholder">
+            <div class="drop-placeholder-icon">＋</div>
+            <div>Drop audio here or click to import</div>
+          </div>
+        </div>
+        <div class="mt-3">
+          <button class="add-sound-btn btn btn-ghost w-full text-xs py-2">＋ Add Sound / Import</button>
+        </div>`;
 
-          const titleWrap = document.createElement('div');
-          titleWrap.className = 'flex items-center gap-2 text-lg font-semibold';
-          titleWrap.innerHTML = `
-            <h2 class="section-title" contenteditable="true">${sectionData.name}</h2>
-            <span class="section-count text-xs bg-gray-700 px-2 py-0.5 rounded-md">0</span>`;
+      const dropZone      = $('.drop-zone',       sectionEl);
+      const titleEl       = $('.section-title',   sectionEl);
+      const delSectionBtn = $('.del-section-btn', sectionEl);
+      const addSoundBtn   = $('.add-sound-btn',   sectionEl);
 
-          const deleteBtn = document.createElement('button');
-          deleteBtn.className = 'text-gray-400 hover:text-red-400 transition-colors text-lg';
-          deleteBtn.innerHTML = '✖';
-          deleteBtn.title = 'Delete Section';
-
-          header.append(titleWrap, deleteBtn);
-
-          const dropZone = document.createElement('div');
-          dropZone.className = 'drop-zone relative p-4 border-2 border-dashed border-gray-700 rounded-2xl bg-gray-800/50';
-          dropZone.innerHTML = `
-            <div class="drop-area pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-gray-400">
-              <div class="text-3xl">＋</div>
-              <div>Drop sounds here or click to import</div>
-            </div>`;
-
-          // FIXED: Add footer with "Add Sound" button
-          const footer = document.createElement('footer');
-          footer.className = 'mt-4';
-          const addSoundBtn = document.createElement('button');
-          addSoundBtn.className = 'add-sound-btn w-full bg-gray-700 hover:bg-gray-600 text-gray-300 font-semibold py-3 rounded-xl transition-colors active:scale-95';
-          addSoundBtn.textContent = '＋ Add Sound / Import';
-          footer.appendChild(addSoundBtn);
-
-          const fileInput = document.createElement('input');
-          fileInput.type = 'file';
-          fileInput.accept = 'audio/*';
-          fileInput.multiple = true;
-          fileInput.className = 'hidden';
-
-          sectionEl.append(header, dropZone, footer, fileInput);
-          soundboardGrid.appendChild(sectionEl);
-
-          // Event Listeners for the new section
-          $('.section-title', header).addEventListener('blur', (e) => {
-              const newName = e.target.textContent.trim();
-              if (newName) {
-                const sec = sections.find(s => s.id === sectionData.id);
-                if(sec) { sec.name = newName; idb.set(SECTIONS_STORE, 'layout', sections); }
-              } else {
-                  e.target.textContent = sectionData.name; // Revert if empty
-              }
-          });
-
-          deleteBtn.addEventListener('click', async () => {
-              if (confirm(`Are you sure you want to delete the "${sectionData.name}" section and all its sounds?`)) {
-                  // Delete sounds associated with this section
-                  const allSounds = await idb.getAll(SOUNDS_STORE);
-                  const soundsToDelete = allSounds.filter(s => s.sectionId === sectionData.id);
-                  for (const sound of soundsToDelete) {
-                      await idb.delete(SOUNDS_STORE, sound.idbKey);
-                  }
-                  // Remove section from state and save
-                  sections = sections.filter(s => s.id !== sectionData.id);
-                  await idb.set(SECTIONS_STORE, 'layout', sections);
-                  await reRenderBoard(); // Safely re-render the entire board
-              }
-          });
-
-          // FIXED: Make drop zone AND add button trigger the file input
-          addSoundBtn.addEventListener('click', () => fileInput.click());
-          dropZone.addEventListener('click', (e) => {
-              if (!e.target.closest('.sound-card')) fileInput.click();
-          });
-
-          fileInput.addEventListener('change', (e) => {
-              if (e.target.files.length) {
-                  addFilesToSection(e.target.files, sectionData.id);
-                  fileInput.value = '';
-              }
-          });
-
-          // Drag and Drop
-          dropZone.addEventListener('dragenter', e => e.preventDefault());
-          dropZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            const draggingCard = $('.dragging');
-            if (draggingCard) {
-              const afterElement = getDragAfterElement(dropZone, e.clientY);
-              dropZone.insertBefore(draggingCard, afterElement);
-            } else { dropZone.classList.add('drag-over'); }
-          });
-          dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-          dropZone.addEventListener('drop', async (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            const draggingCard = $('.dragging');
-            if (draggingCard) {
-                const oldSectionId = draggingCard.closest('section').dataset.sectionId;
-                updateSectionCount(oldSectionId);
-                updateSectionCount(sectionData.id);
-                if (draggingCard.dataset.idbKey) {
-                    const sound = await idb.get(SOUNDS_STORE, draggingCard.dataset.idbKey);
-                    if(sound) {
-                        sound.sectionId = sectionData.id;
-                        await idb.set(SOUNDS_STORE, draggingCard.dataset.idbKey, sound);
-                    }
-                }
-            } else if (e.dataTransfer.files.length) {
-              await addFilesToSection(e.dataTransfer.files, sectionData.id);
-            }
-          });
+      // Hidden file input for this section
+      const fileInput = Object.assign(document.createElement('input'), {
+        type: 'file', accept: 'audio/*', multiple: true, className: 'sr-only',
       });
+      sectionEl.appendChild(fileInput);
+
+      soundboardGrid.appendChild(sectionEl);
+
+      // ── Section title editing (m4: Enter commits, no <br>) ──────────────────
+      titleEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); }
+      });
+      titleEl.addEventListener('blur', async () => {
+        const newName = titleEl.textContent.trim();
+        if (!newName) { titleEl.textContent = sec.name; return; }
+        sec.name = newName;
+        sectionEl.setAttribute('aria-label', `${newName} section`);
+        try { await idb.set(SECTIONS_STORE, 'layout', sections); } catch (_) {}
+      });
+
+      // ── Delete section ───────────────────────────────────────────────────────
+      delSectionBtn.addEventListener('click', async () => {
+        if (!await showConfirm(`Delete "${sec.name}" and all its sounds?`)) return;
+
+        // Destroy in-memory WaveSurfer instances for this section's cards
+        $$('.sound-card', dropZone).forEach(card => destroyCard(card));
+
+        // Delete IDB records for this section (M4: key-safe approach)
+        try {
+          const allSounds = await idb.getAll(SOUNDS_STORE);
+          await Promise.all(
+            allSounds
+              .filter(s => s.sectionId === sec.id)
+              .map(s   => idb.delete(SOUNDS_STORE, s.idbKey))
+          );
+        } catch (_) {}
+
+        sections = sections.filter(s => s.id !== sec.id);
+        try { await idb.set(SECTIONS_STORE, 'layout', sections); } catch (_) {}
+        await reRenderBoard();
+      });
+
+      // ── File import ──────────────────────────────────────────────────────────
+      addSoundBtn.addEventListener('click', () => fileInput.click());
+      dropZone.addEventListener('click', (e) => {
+        if (!e.target.closest('.sound-card') && !e.target.closest('button')) fileInput.click();
+      });
+      fileInput.addEventListener('change', async (e) => {
+        if (e.target.files.length) {
+          await addFilesToSection(e.target.files, sec.id);
+          fileInput.value = '';
+        }
+      });
+
+      // ── Drag and drop (M7: use dragOriginSectionId captured on dragstart) ────
+      dropZone.addEventListener('dragenter', e => e.preventDefault());
+      dropZone.addEventListener('dragover',  e => {
+        const dragging = $('.dragging');
+        if (dragging) {
+          handleDragOver(e, dropZone);
+          dropZone.classList.remove('drag-over');
+        } else {
+          e.preventDefault();
+          dropZone.classList.add('drag-over');
+        }
+      });
+      dropZone.addEventListener('dragleave', (e) => {
+        if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('drag-over');
+      });
+      dropZone.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const dragging = $('.dragging');
+        if (dragging) {
+          // M7: use the origin captured on dragstart, not the (now-moved) card's current parent
+          const oldId = dragOriginSectionId;
+          dragOriginSectionId = null;
+          if (oldId) updateSectionCount(oldId);
+          updateSectionCount(sec.id);
+          const key = dragging.dataset.idbKey;
+          if (key) {
+            try {
+              const sound = await idb.get(SOUNDS_STORE, key);
+              if (sound) { sound.sectionId = sec.id; await idb.set(SOUNDS_STORE, key, sound); }
+            } catch (_) {}
+          }
+        } else if (e.dataTransfer.files.length) {
+          await addFilesToSection(e.dataTransfer.files, sec.id);
+        }
+      });
+    });
   };
 
   const handleAddSection = async () => {
-    const newSection = {
-        id: `sec_${Date.now()}`,
-        name: 'New Section'
-    };
-    sections.push(newSection);
-    await idb.set(SECTIONS_STORE, 'layout', sections);
-    await reRenderBoard(); // Safely re-render the entire board
+    const newSec = { id: `sec_${Date.now()}`, name: 'New Section' };
+    sections.push(newSec);
+    try { await idb.set(SECTIONS_STORE, 'layout', sections); } catch (_) {}
+    await reRenderBoard();
   };
 
-  // FIXED: New function to safely re-render the entire board state
+  /** Full board re-render — destroy → render → restore. (M3: correct order) */
   const reRenderBoard = async () => {
-      // 1. Clean up existing WaveSurfer instances to prevent memory leaks
-      activeAudios.forEach(ws => {
-          if (ws && typeof ws.destroy === 'function') {
-              ws.destroy();
-          }
-      });
-      activeAudios.clear();
-
-      // 2. Render the section containers from state
-      renderSections();
-
-      // 3. Re-populate the sections with sounds from the database
-      await restoreSounds();
-  }
+    destroyAllCards(); // M3: destroy first, clear happens inside
+    renderSections();
+    await restoreSounds();
+  };
 
 
-  // ===================================================================
-  // E. DATA & FILE HANDLING
-  // ===================================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // J. DATA / FILE HANDLING
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const addFilesToSection = async (files, sectionId) => {
-    const sectionEl = $(`[data-section-id="${sectionId}"] .drop-zone`);
-    if(!sectionEl) {
-        showMessage("Could not find the target section.");
-        return;
-    }
+    const dropZone = $(`[data-section-id="${sectionId}"] .drop-zone`);
+    if (!dropZone) return showMessage('Target section not found.');
     for (const file of files) {
       if (!file.type.startsWith('audio/')) continue;
       try {
-        const arrayBuffer = await file.arrayBuffer();
-        const blob = new Blob([arrayBuffer], { type: file.type });
-        const idbKey = `sound_${Date.now()}_${file.name}`;
-        const record = { name: file.name.replace(/\.[^/.]+$/, ''), buffer: arrayBuffer, type: file.type, sectionId, volume: 1.0, startTime: 0, idbKey };
+        const buffer  = await file.arrayBuffer();
+        const blob    = new Blob([buffer], { type: file.type });
+        const idbKey  = `sound_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        const record  = {
+          idbKey, sectionId, type: 'audio',
+          name: file.name.replace(/\.[^/.]+$/, ''),
+          buffer, mimeType: file.type,
+          volume: 1.0, startTime: 0,
+        };
         await idb.set(SOUNDS_STORE, idbKey, record);
-        const card = await createCardElement({ ...record, blob });
-        sectionEl.appendChild(card);
+        const card = await createAudioCard({ ...record, blob });
+        dropZone.appendChild(card);
       } catch (e) {
-        showMessage(`Could not process or save the file: ${file.name}`);
+        showMessage(`Could not process: ${file.name}`);
       }
     }
     updateSectionCount(sectionId);
   };
 
   const restoreSounds = async () => {
-      try {
-          const sounds = await idb.getAll(SOUNDS_STORE);
-          for (const soundRec of sounds) {
-              const targetSection = $(`[data-section-id="${soundRec.sectionId}"] .drop-zone`);
-              if (targetSection) {
-                  let card;
-                  if (soundRec.type === 'tts') {
-                      card = await createCardElement(soundRec);
-                  } else {
-                      const blob = new Blob([soundRec.buffer], { type: soundRec.type });
-                      card = await createCardElement({ ...soundRec, blob });
-                  }
-                  targetSection.appendChild(card);
-              }
-          }
-          // Update all counts after restoring
-          sections.forEach(sec => updateSectionCount(sec.id));
-      } catch (e) {
-          showMessage("Could not restore saved sounds from the database.");
+    try {
+      const sounds = await idb.getAll(SOUNDS_STORE);
+      for (const rec of sounds) {
+        const targetZone = $(`[data-section-id="${rec.sectionId}"] .drop-zone`);
+        if (!targetZone) continue;
+        let card;
+        if (rec.type === 'tts') {
+          card = await createTTSCard(rec);
+        } else {
+          const blob = new Blob([rec.buffer], { type: rec.mimeType || rec.type });
+          card = await createAudioCard({ ...rec, blob });
+        }
+        targetZone.appendChild(card);
       }
+    } catch (e) {
+      showMessage('Could not restore saved sounds. Your browser may not support IndexedDB in this context.');
+    }
+    sections.forEach(sec => updateSectionCount(sec.id));
   };
 
 
-  // ===================================================================
-  // F. FEATURE MODULES (TTS, Recording)
-  // ===================================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // K. TTS MODULE  (m1: voice loading guard)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  let voicesLoaded = false;
 
   const populateVoiceList = () => {
     const voices = window.speechSynthesis.getVoices();
-    voiceSelect.innerHTML = '<option value="">Select a voice...</option>';
-    voices.forEach(voice => {
-      const option = document.createElement('option');
-      option.value = voice.name;
-      option.textContent = `${voice.name} (${voice.lang})`;
-      voiceSelect.appendChild(option);
+    if (!voices.length) return; // m1: guard — nothing to populate yet
+    voicesLoaded = true;
+    voiceSelect.innerHTML = '<option value="">Select a voice…</option>';
+    voices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value       = v.name;
+      opt.textContent = `${v.name} (${v.lang})`;
+      voiceSelect.appendChild(opt);
     });
-    const lastSelected = localStorage.getItem('lastSelectedVoice');
-    if (lastSelected && voices.some(v => v.name === lastSelected)) {
-      voiceSelect.value = lastSelected;
-    } else if (voices.length > 0) {
-      voiceSelect.value = voices[0].name;
-    }
+    const last = localStorage.getItem('lastVoice');
+    voiceSelect.value = (last && voices.some(v => v.name === last)) ? last : (voices[0]?.name ?? '');
   };
 
-  const handleTTSAction = async (action) => {
-    const text = ttsText.value.trim();
+  const handleTTS = async (action) => {
+    const text      = ttsText.value.trim();
     const voiceName = voiceSelect.value;
-    if (!text) return showMessage("Please enter some text.");
-    if (!voiceName) return showMessage("Please select a voice.");
+    if (!text)      return showMessage('Please enter some text.');
+    if (!voiceName) return showMessage('Please select a voice.');
 
     if (action === 'preview') {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.voice = window.speechSynthesis.getVoices().find(v => v.name === voiceName);
-      window.speechSynthesis.speak(utterance);
-    } else if (action === 'add') {
-      if (sections.length === 0) {
-        showMessage("Please add a section before adding sounds.");
-        return;
-      }
-      const firstSectionId = sections[0].id;
-      const targetSectionEl = $(`[data-section-id="${firstSectionId}"] .drop-zone`);
-      const idbKey = `tts_${Date.now()}`;
-      const cardData = { name: text, text, voiceName, idbKey, type: 'tts', sectionId: firstSectionId };
-
-      try {
-        const card = await createCardElement(cardData);
-        targetSectionEl.appendChild(card);
-        updateSectionCount(firstSectionId);
-        await idb.set(SOUNDS_STORE, idbKey, cardData);
-      } catch (e) { showMessage("Could not create the TTS sound card."); }
+      const u   = new SpeechSynthesisUtterance(text);
+      u.voice   = window.speechSynthesis.getVoices().find(v => v.name === voiceName) ?? null;
+      window.speechSynthesis.speak(u);
+      return;
     }
+
+    if (sections.length === 0) return showMessage('Add a section first.');
+    const firstId   = sections[0].id;
+    const dropZone  = $(`[data-section-id="${firstId}"] .drop-zone`);
+    const idbKey    = `tts_${Date.now()}`;
+    const cardData  = { idbKey, sectionId: firstId, type: 'tts', name: text, text, voiceName };
+    try {
+      const card = await createTTSCard(cardData);
+      dropZone.appendChild(card);
+      updateSectionCount(firstId);
+      await idb.set(SOUNDS_STORE, idbKey, cardData);
+    } catch (e) { showMessage('Could not create TTS card.'); }
   };
 
-  const getMicrophoneStream = async () => {
-    if (microphoneStream) return microphoneStream;
-    try {
-      microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      return microphoneStream;
-    } catch (err) {
-      showMessage("Microphone access denied. Please enable it in your browser settings.");
-      return null;
-    }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // L. RECORDING MODULE  (M5: mic released after recording; M6: mimeType fallback)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /** Returns the best supported mimeType for MediaRecorder. (M6) */
+  const getSupportedMimeType = () => {
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+    return candidates.find(m => MediaRecorder.isTypeSupported(m)) ?? '';
   };
 
   const startRecording = async () => {
     if (isRecording) return;
-    const stream = await getMicrophoneStream();
-    if (!stream) return;
+
+    // M5: request fresh stream each time (released after each recording)
     try {
-      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-    } catch (e) { return showMessage('Recording is not supported on this browser.'); }
+      microphoneStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      return showMessage('Microphone access denied. Please enable it in your browser settings.');
+    }
+
+    const mimeType = getSupportedMimeType(); // M6: cross-browser mimeType
+    try {
+      mediaRecorder = new MediaRecorder(microphoneStream, mimeType ? { mimeType } : {});
+    } catch {
+      releaseMic();
+      return showMessage('Recording is not supported on this browser.');
+    }
+
     audioChunks = [];
-    mediaRecorder.ondataavailable = e => e.data.size > 0 && audioChunks.push(e.data);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop = async () => {
-        if (sections.length === 0) {
-            showMessage("Please add a section before saving a recording.");
-            return;
-        }
-        const firstSectionId = sections[0].id;
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        const fileName = `Recording_${Date.now()}.webm`;
-        await addFilesToSection([new File([audioBlob], fileName, { type: 'audio/webm' })], firstSectionId);
+      releaseMic(); // M5: stop tracks immediately after recording
+      if (sections.length === 0) return showMessage('Add a section before saving a recording.');
+      const type = mimeType || 'audio/webm';
+      const blob = new Blob(audioChunks, { type });
+      const ext  = type.split('/')[1]?.split(';')[0] ?? 'webm';
+      await addFilesToSection(
+        [new File([blob], `Recording_${Date.now()}.${ext}`, { type })],
+        sections[0].id
+      );
     };
+
     mediaRecorder.start();
     isRecording = true;
-    recordBtn.classList.add('recording-pulse');
+    recordBtn.classList.add('recording');
     recordBtn.innerHTML = '🔴';
     recordingTooltip.textContent = 'Release to save';
-    recordingTooltip.style.opacity = '1';
+    recordingTooltip.classList.add('visible');
   };
 
   const stopRecording = () => {
     if (!isRecording || !mediaRecorder) return;
     mediaRecorder.stop();
     isRecording = false;
-    recordBtn.classList.remove('recording-pulse');
+    recordBtn.classList.remove('recording');
     recordBtn.innerHTML = '🎙️';
     recordingTooltip.textContent = 'Hold to record';
-    recordingTooltip.style.opacity = '0';
+    recordingTooltip.classList.remove('visible');
+  };
+
+  /** M5: Stop all microphone tracks to release the mic indicator. */
+  const releaseMic = () => {
+    microphoneStream?.getTracks().forEach(t => t.stop());
+    microphoneStream = null;
   };
 
 
-  // ===================================================================
-  // G. EVENT LISTENERS & INITIALIZATION
-  // ===================================================================
+  // ═══════════════════════════════════════════════════════════════════════════
+  // M. GLOBAL EVENT LISTENERS & INIT
+  // ═══════════════════════════════════════════════════════════════════════════
 
-  const initializeEventListeners = () => {
-    // Global Controls
-    fadeInSlider.addEventListener('input', e => { fadeInTime = parseFloat(e.target.value); fadeInVal.textContent = fadeInTime.toFixed(1); saveSettings(); });
-    fadeOutSlider.addEventListener('input', e => { fadeOutTime = parseFloat(e.target.value); fadeOutVal.textContent = fadeOutTime.toFixed(1); saveSettings(); });
-    fadeAllBtn.addEventListener('click', () => { window.speechSynthesis.cancel(); activeAudios.forEach((ws, card) => card.querySelector('.btn-stop')?.click()); });
-    helpBtn.addEventListener('click', () => helpModal.classList.add('visible'));
+  const initListeners = () => {
+    fadeInSlider.addEventListener('input', (e) => {
+      fadeInTime = parseFloat(e.target.value);
+      fadeInVal.textContent = `${fadeInTime.toFixed(1)}s`;
+      saveSettings();
+    });
+    fadeOutSlider.addEventListener('input', (e) => {
+      fadeOutTime = parseFloat(e.target.value);
+      fadeOutVal.textContent = `${fadeOutTime.toFixed(1)}s`;
+      saveSettings();
+    });
+
+    // m7: call doStop() directly — no synthetic .click()
+    fadeAllBtn.addEventListener('click', () => {
+      window.speechSynthesis.cancel();
+      $$('.sound-card').forEach(card => card._doStop?.());
+      $$('.sound-card.is-playing').forEach(card => card.classList.remove('is-playing'));
+    });
+
     addSectionBtn.addEventListener('click', handleAddSection);
 
-    // Modals
-    alertModalCloseBtn.addEventListener('click', () => alertModal.classList.remove('visible'));
-    helpModalCloseBtn.addEventListener('click', () => helpModal.classList.remove('visible'));
-    helpModal.addEventListener('click', (e) => { if (e.target === helpModal) helpModal.classList.remove('visible'); });
+    previewBtn.addEventListener('click',  () => handleTTS('preview'));
+    generateBtn.addEventListener('click', () => handleTTS('add'));
+    voiceSelect.addEventListener('change', () => {
+      localStorage.setItem('lastVoice', voiceSelect.value);
+    });
 
-    // TTS & Recording
-    previewBtn.addEventListener('click', () => handleTTSAction('preview'));
-    generateBtn.addEventListener('click', () => handleTTSAction('add'));
-    voiceSelect.addEventListener('change', () => localStorage.setItem('lastSelectedVoice', voiceSelect.value));
-    if (speechSynthesis.onvoiceschanged !== undefined) {
+    // m1: always populate when voices become available
+    if ('onvoiceschanged' in speechSynthesis) {
       speechSynthesis.onvoiceschanged = populateVoiceList;
     }
-    recordBtn.addEventListener('pointerdown', startRecording);
-    recordBtn.addEventListener('pointerup', stopRecording);
-    recordBtn.addEventListener('pointerleave', stopRecording);
-  };
+    populateVoiceList(); // sync call for browsers that load voices synchronously
 
-  const getDragAfterElement = (container, y) => {
-    const draggableElements = [...container.querySelectorAll('.sound-card:not(.dragging)')];
-    return draggableElements.reduce((closest, child) => {
-      const box = child.getBoundingClientRect();
-      const offset = y - box.top - box.height / 2;
-      return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
-    }, { offset: Number.NEGATIVE_INFINITY }).element;
+    recordBtn.addEventListener('pointerdown', startRecording);
+    recordBtn.addEventListener('pointerup',   stopRecording);
+    recordBtn.addEventListener('pointerleave',stopRecording);
+
+    // Graceful image error handling
+    $$('#donationLinks img, header img').forEach(img =>
+      img.addEventListener('error', () => { img.style.display = 'none'; })
+    );
   };
 
   const initializeApp = async () => {
     const settings = loadSettings();
-    fadeInTime = settings.fadeIn ?? 2.0;
+    fadeInTime  = settings.fadeIn  ?? 2.0;
     fadeOutTime = settings.fadeOut ?? 2.0;
-    fadeInSlider.value = fadeInTime;
+    fadeInSlider.value  = fadeInTime;
     fadeOutSlider.value = fadeOutTime;
-    fadeInVal.textContent = fadeInTime.toFixed(1);
-    fadeOutVal.textContent = fadeOutTime.toFixed(1);
+    fadeInVal.textContent  = `${fadeInTime.toFixed(1)}s`;
+    fadeOutVal.textContent = `${fadeOutTime.toFixed(1)}s`;
 
-    document.querySelectorAll('#donationLinks img').forEach(img => img.addEventListener('error', () => { img.style.display = 'none'; }));
+    initListeners();
 
-    populateVoiceList();
-    initializeEventListeners();
-
-    // Load layout, or create a default one
-    const savedSections = await idb.get(SECTIONS_STORE, 'layout');
-    if (savedSections && savedSections.length > 0) {
-        sections = savedSections;
-    } else {
-        // Create a default initial section
-        sections = [{ id: `sec_${Date.now()}`, name: 'Sounds' }];
-        await idb.set(SECTIONS_STORE, 'layout', sections);
+    try {
+      const saved = await idb.get(SECTIONS_STORE, 'layout');
+      sections = (saved?.length) ? saved : [{ id: `sec_${Date.now()}`, name: 'Sounds' }];
+      if (!saved?.length) await idb.set(SECTIONS_STORE, 'layout', sections);
+    } catch (e) {
+      // F3: IDB unavailable — show clear message, continue with empty state
+      showMessage('Your browser does not support local storage in this context (private mode?). Sounds will not be saved between sessions.');
+      sections = [{ id: `sec_${Date.now()}`, name: 'Sounds' }];
     }
 
     renderSections();
     await restoreSounds();
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js').catch(err => {
-        console.error('Service Worker registration failed:', err);
-      });
+      navigator.serviceWorker.register('./service-worker.js')
+        .catch(e => console.warn('[SW] Registration failed:', e));
     }
   };
 
