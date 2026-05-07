@@ -421,6 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check if the user has seen the warning before
     if (!localStorage.getItem('ytAdWarningSeen')) {
         ytAdWarning.style.display = 'block';
+        localStorage.setItem('ytAdWarningSeen', 'true');
     } else {
         ytAdWarning.style.display = 'none';
     }
@@ -438,7 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const name = ytNameInput.value.trim() || `YouTube: ${videoId}`;
 
     // Mark the warning as seen so it never shows again
-    localStorage.setItem('ytAdWarningSeen', 'true');
     closeModal(youtubeModal);
 
     const idbKey  = `yt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -748,15 +748,17 @@ document.addEventListener('DOMContentLoaded', () => {
     progressBg.appendChild(progressBar);
     waveHost.appendChild(progressBg);
 
-    const mount = document.createElement('div');
+const mount = document.createElement('div');
     mount.id = `yt_${idbKey}`;
+    // Mount to document.body so the YT API can find it instantly, bypassing the need for a polling loop
     mount.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:200px;height:200px;pointer-events:none;';
-    card.appendChild(mount);
+    document.body.appendChild(mount);
 
     let player = null;
     let ready  = false;
     let cancelFadeIn = null; let cancelFadeOut = null;
     let progressInterval = null;
+    let userRequestedStop = false;
 
     await loadYouTubeAPI();
 
@@ -772,63 +774,60 @@ document.addEventListener('DOMContentLoaded', () => {
       const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const d = player.getDuration();
       if (d > 0) {
+          userRequestedStop = false;
           player.seekTo(percent * d, true);
           progressBar.style.width = `${percent * 100}%`;
           curLbl.textContent = formatTime(percent * d);
       }
     });
 
-    const initYT = () => {
-      if (!document.getElementById(mount.id)) { setTimeout(initYT, 50); return; }
+    // Initialize immediately without the setTimeout polling loop
+    player = new YT.Player(mount.id, {
+      height: '200', width: '200',
+      videoId,
+      playerVars: { autoplay: 0, controls: 0, rel: 0, origin: window.location.origin },
+      events: {
+        onReady: () => {
+            ready = true;
+            ytApiWrapper.setVolume(parseFloat(volSlider.value));
+            const s = Math.max(0, parseFloat(startInput.value) || 0);
+            curLbl.textContent = formatTime(s);
+        },
+        onStateChange: (e) => {
+          // Ignore buffering state if it was triggered by a programmatic stop/rewind
+          const playing = e.data === YT.PlayerState.PLAYING || (e.data === YT.PlayerState.BUFFERING && !userRequestedStop);
+          card.classList.toggle('is-playing', playing);
+          playBtn.innerHTML = playing ? '⏸' : '▶';
 
-      player = new YT.Player(mount.id, {
-        height: '200', width: '200',
-        videoId,
-        playerVars: { autoplay: 0, controls: 0, rel: 0, origin: window.location.origin },
-        events: {
-          onReady: () => {
-              ready = true;
-              ytApiWrapper.setVolume(parseFloat(volSlider.value));
-              // REMOVED: player.seekTo() to prevent autoplay/buffering loops on load
-              const s = Math.max(0, parseFloat(startInput.value) || 0);
-              curLbl.textContent = formatTime(s);
-          },
-          onStateChange: (e) => {
-            const playing = e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.BUFFERING;
-            card.classList.toggle('is-playing', playing);
-            playBtn.innerHTML = playing ? '⏸' : '▶';
-
-            if (playing) {
-              const d = player.getDuration();
-              if (d) durLbl.textContent = formatTime(d);
-              clearInterval(progressInterval);
-              progressInterval = setInterval(() => {
-                  if(player && player.getCurrentTime) {
-                      const c = player.getCurrentTime();
-                      const total = player.getDuration() || 1;
-                      curLbl.textContent = formatTime(c);
-                      progressBar.style.width = `${(c / total) * 100}%`;
-                  }
-              }, 150);
-            } else {
-              clearInterval(progressInterval);
-              if (e.data === YT.PlayerState.ENDED) {
-                  const s = Math.max(0, parseFloat(startInput.value) || 0);
-                  player.seekTo(s, true);
-                  player.pauseVideo();
-                  progressBar.style.width = `${(s / (player.getDuration() || 1)) * 100}%`;
-                  curLbl.textContent = formatTime(s);
-              }
+          if (playing) {
+            const d = player.getDuration();
+            if (d) durLbl.textContent = formatTime(d);
+            clearInterval(progressInterval);
+            progressInterval = setInterval(() => {
+                if(player && player.getCurrentTime) {
+                    const c = player.getCurrentTime();
+                    const total = player.getDuration() || 1;
+                    curLbl.textContent = formatTime(c);
+                    progressBar.style.width = `${(c / total) * 100}%`;
+                }
+            }, 150);
+          } else {
+            clearInterval(progressInterval);
+            if (e.data === YT.PlayerState.ENDED) {
+                userRequestedStop = true;
+                const s = Math.max(0, parseFloat(startInput.value) || 0);
+                player.seekTo(s, true);
+                player.pauseVideo();
+                progressBar.style.width = `${(s / (player.getDuration() || 1)) * 100}%`;
+                curLbl.textContent = formatTime(s);
             }
-          },
-          onError: (e) => {
-              if (e.data === 101 || e.data === 150) showMessage(`Embedding blocked by video owner. Try searching YouTube for a "lyric video" or unofficial upload.`);
           }
         },
-      });
-    };
-
-    initYT();
+        onError: (e) => {
+            if (e.data === 101 || e.data === 150) showMessage(`Embedding blocked by video owner. Try searching YouTube for a "lyric video" or unofficial upload.`);
+        }
+      },
+    });
 
     // 3. Robust Play/Pause Logic
     playBtn.addEventListener('click', () => {
@@ -837,18 +836,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Explicit UI toggle for immediate feedback
       if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
+          userRequestedStop = true;
           player.pauseVideo();
           playBtn.innerHTML = '▶';
           card.classList.remove('is-playing');
           return;
       }
 
+      userRequestedStop = false;
       cancelFadeOut?.();
       const targetVol = parseFloat(volSlider.value);
       const s = Math.max(0, parseFloat(startInput.value) || 0);
       const cur = player.getCurrentTime() || 0;
 
-      // Force to start time if stopped, unstarted, ended, or if they seeked backwards past the start point
       if (state === YT.PlayerState.UNSTARTED || state === YT.PlayerState.CUED || state === YT.PlayerState.ENDED || cur < (s - 0.5)) {
           player.seekTo(s, true);
       }
@@ -867,6 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const s = Math.max(0, parseFloat(startInput.value) || 0);
 
       const resetVisuals = () => {
+          userRequestedStop = true;
           player.pauseVideo(); player.seekTo(s, true);
           playBtn.innerHTML = '▶';
           card.classList.remove('is-playing');
@@ -894,14 +895,14 @@ document.addEventListener('DOMContentLoaded', () => {
     volSlider.addEventListener('input',  (e) => ytApiWrapper.setVolume(parseFloat(e.target.value)));
     volSlider.addEventListener('change', (e) => { record.volume = parseFloat(e.target.value); persistRecord(); });
 
-    // Auto-update visuals when start time is edited while stopped
     startInput.addEventListener('change', (e) => {
         const s = Math.max(0, parseFloat(e.target.value) || 0);
         record.startTime = s;
         persistRecord();
         if (ready && player.getPlayerState() !== YT.PlayerState.PLAYING) {
+            userRequestedStop = true;
             player.seekTo(s, true);
-            player.pauseVideo(); // Force pause to prevent background playback trigger
+            player.pauseVideo();
             curLbl.textContent = formatTime(s);
             const d = player.getDuration();
             if (d > 0) progressBar.style.width = `${(s / d) * 100}%`;
@@ -917,8 +918,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     delBtn.addEventListener('click', async () => {
       if (!await showConfirm(`Delete "${titleEl.textContent}"?`)) return;
-      doStop(); clearInterval(progressInterval); player.destroy(); card.remove();
-      updateSectionCount(card.closest('section')?.dataset.sectionId); saveSectionOrder(card.closest('section')?.dataset.sectionId);
+      const secId = card.closest('section')?.dataset.sectionId; // Must capture BEFORE card.remove()
+      doStop();
+      clearInterval(progressInterval);
+
+      if (player && ready && player.destroy) player.destroy();
+      if (mount.parentNode) mount.parentNode.removeChild(mount); // Clean up body mount
+      card.remove();
+
+      updateSectionCount(secId); saveSectionOrder(secId);
       try { await idb.delete(SOUNDS_STORE, idbKey); } catch (_) {}
     });
 
@@ -1127,7 +1135,11 @@ document.addEventListener('DOMContentLoaded', () => {
           return idxA - idxB;
         });
 
-        for (const rec of secSounds) {
+        for (let rec of secSounds) {
+          // Re-hydrate the ArrayBuffer into a usable Blob for the WaveSurfer
+          if (rec.type === 'audio' && rec.buffer) {
+            rec = { ...rec, blob: new Blob([rec.buffer], { type: rec.mimeType || 'audio/webm' }) };
+          }
           const card = await createCardElement(rec);
           targetZone.appendChild(card);
         }
