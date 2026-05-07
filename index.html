@@ -223,6 +223,9 @@
   <div id="youtubeModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="youtubeModalTitle">
     <div class="modal-content">
       <h3 id="youtubeModalTitle" class="text-xl font-bold mb-4" style="font-family:var(--font-display);letter-spacing:.05em">Add YouTube Track</h3>
+      <div id="ytAdWarning" class="mb-4 p-3 rounded text-sm" style="background:rgba(239,68,68,0.15); border:1px solid var(--red-dim); color:var(--text-pri); display:none; line-height:1.5;">
+        <strong style="color:var(--red);">⚠️ Live Event Warning:</strong> YouTube may play ads before your track starts. To ensure seamless playback, we highly recommend using an <strong>ad-blocker</strong> (like uBlock Origin) or logging into a <strong>YouTube Premium</strong> account.
+      </div>
       <input id="ytUrlInput" type="url" class="input w-full mb-3" placeholder="https://youtube.com/watch?v=..." />
       <input id="ytNameInput" type="text" class="input w-full" placeholder="Track Name (optional)" />
       <div class="text-right mt-4 flex gap-2 justify-end">
@@ -372,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ytNameInput       = $('#ytNameInput');
   const ytCancel          = $('#ytCancel');
   const ytOk              = $('#ytOk');
-
+  const ytAdWarning       = $('#ytAdWarning');
   const openModal  = (el) => el.classList.add('visible');
   const closeModal = (el) => el.classList.remove('visible');
 
@@ -414,15 +417,28 @@ document.addEventListener('DOMContentLoaded', () => {
     currentYtSectionId = sectionId;
     ytUrlInput.value = '';
     ytNameInput.value = '';
+
+    // Check if the user has seen the warning before
+    if (!localStorage.getItem('ytAdWarningSeen')) {
+        ytAdWarning.style.display = 'block';
+    } else {
+        ytAdWarning.style.display = 'none';
+    }
+
     openModal(youtubeModal);
     ytUrlInput.focus();
   };
+
   ytCancel.addEventListener('click', () => closeModal(youtubeModal));
+
   ytOk.addEventListener('click', async () => {
     const raw = ytUrlInput.value.trim();
     const videoId = parseYouTubeId(raw);
     if (!videoId) return showMessage('Invalid YouTube URL or video ID.');
     const name = ytNameInput.value.trim() || `YouTube: ${videoId}`;
+
+    // Mark the warning as seen so it never shows again
+    localStorage.setItem('ytAdWarningSeen', 'true');
     closeModal(youtubeModal);
 
     const idbKey  = `yt_${Date.now()}_${Math.random().toString(36).slice(2)}`;
